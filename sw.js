@@ -1,6 +1,6 @@
 // Keeps the app working with no signal: serves saved copies, refreshes them when online.
-const CACHE = "nzcs-chargeout-v7";
-const FILES = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "vendor/jspdf.umd.min.js", "vendor/jspdf.plugin.autotable.min.js"];
+const CACHE = "nzcs-chargeout-v8";
+const FILES = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "vendor/jspdf.umd.min.js", "vendor/jspdf.plugin.autotable.min.js", "forms.js"];
 self.addEventListener("install", e => {
   // Cache each file on its own so one missing file can't stop the rest.
   e.waitUntil(caches.open(CACHE).then(c => Promise.all(FILES.map(f => c.add(f).catch(() => {})))));

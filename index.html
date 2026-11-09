@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>NZCS Charge Out</title>
+<title>NZCS Forms</title>
 <meta name="theme-color" content="#1d5a40">
 <meta name="robots" content="noindex,nofollow">
 <link rel="manifest" href="manifest.webmanifest">
@@ -55,7 +55,7 @@ section.card>h2{margin:0;font-family:var(--f-display);font-weight:600;font-size:
 .field{display:grid;gap:6px;min-width:0}
 label,.label{font-weight:600;font-size:14px}
 .hint{font-size:13px;color:var(--muted);font-weight:400}
-input[type=password],input[type=text],input[type=date],input[type=number],textarea,select{
+input[type=password],input[type=text],input[type=date],input[type=datetime-local],input[type=number],textarea,select{
   width:100%;font:inherit;color:var(--ink);background:var(--sunken);border:1px solid var(--line);border-radius:8px;padding:11px 12px;min-height:46px}
 textarea{min-height:84px;resize:vertical}
 input[readonly]{background:var(--forest-soft);border-color:transparent;font-weight:600}
@@ -166,14 +166,54 @@ aside.jobs{background:var(--surface);border:1px solid var(--line);border-radius:
 .gate-card input{font-size:18px;letter-spacing:.06em}
 body.locked .layout,body.locked .bar{display:none}
 body:not(.locked) .gate{display:none}
+.home{max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.home-sub{margin:0 0 6px;font-family:var(--f-display);font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--forest);font-weight:600}
+.tiles{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+.tile{display:grid;grid-template-columns:48px 1fr;gap:12px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;text-decoration:none;color:var(--ink);min-height:110px}
+.tile:hover{border-color:var(--forest)}
+.tile .ic{width:48px;height:48px;border-radius:12px;background:var(--forest);color:var(--forest-ink);display:grid;place-items:center}
+.tile .ic svg{width:26px;height:26px}
+.tile .tt{display:grid;gap:4px;min-width:0}
+.tile b{font-family:var(--f-display);font-size:22px;line-height:1.05;font-weight:700}
+.tile .hint{font-size:13.5px}
+.tile .badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.badge{font-size:11.5px;font-weight:700;letter-spacing:.03em;border-radius:999px;padding:2px 8px;background:var(--amber-soft);color:var(--amber)}
+.badge.draft{background:var(--forest-soft);color:var(--forest)}
+.back{font-weight:600}
+body.view-home .layout,body.view-home .bar{display:none}
+body.view-form .home{display:none}
+body.locked .home{display:none}
+.generic{display:none;max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 60px}
+body.view-generic .generic{display:block}
+body.view-generic .home,body.view-generic .layout,body.view-generic .bar,body.locked .generic{display:none!important}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--sunken);color:var(--ink);border-radius:999px;padding:8px 14px;min-height:42px;font-weight:500;font-size:15px}
+.chip[aria-pressed="true"]{background:var(--forest);border-color:var(--forest);color:var(--forest-ink)}
+.chip.multi[aria-pressed="true"]::before{content:"✓ "}
+.notice{background:var(--amber-soft);color:var(--ink);border-left:4px solid var(--hivis);border-radius:8px;padding:12px 14px;display:grid;gap:4px}
+.notice p{margin:0;font-size:15px}
+.notice b{color:var(--amber)}
+.loc-row{display:flex;gap:8px}
+.loc-row input{flex:1;min-width:0}
+.loc-row button{flex:none}
+.sigs{display:grid;gap:12px}
+.sig-item{display:grid;gap:8px;background:var(--sunken);border:1px solid var(--line);border-radius:10px;padding:10px}
+.sig-item-head{display:flex;gap:8px;align-items:center}
+.sig-item-head select{flex:1;min-width:0}
+.sig-wrap.small{height:130px}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.photo{position:relative}
+.photo img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block;max-width:100%}
+.photo .icon-btn{position:absolute;top:4px;right:4px;background:var(--surface);border-radius:50%;width:34px;min-height:34px}
+.photo-add{justify-self:start}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 </style>
 </head>
-<body class="locked">
+<body class="locked view-home">
 
 <div class="gate" id="gate">
   <form class="gate-card" id="gate-form" autocomplete="off">
-    <div><small>NZ Conservation Services Ltd</small><h1>Staff Charge Out</h1></div>
+    <div><small>NZ Conservation Services Ltd</small><h1>NZCS Forms</h1></div>
     <div class="field">
       <label for="gate-code">Enter the share code</label>
       <input type="password" id="gate-code" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Share code">
@@ -182,6 +222,44 @@ body:not(.locked) .gate{display:none}
     <button type="submit" class="btn-primary" id="gate-go">Open form</button>
     <span class="err" id="gate-err" role="alert" hidden></span>
   </form>
+</div>
+
+<div class="home" id="home">
+  <header class="top">
+    <div class="brand">
+      <small>NZ Conservation Services Ltd</small>
+      <h1>NZCS Forms</h1>
+    </div>
+    <span class="role" id="role-pill-home" hidden>Manager</span>
+  </header>
+    <div class="install" id="install-banner" hidden>
+    <div class="install-top">
+      <img src="icon-192.png" alt="">
+      <div class="txt"><b>Put the app on your home screen</b><span class="hint">Opens full screen like any app, and works with no signal.</span></div>
+      <div class="btns"><button type="button" class="btn-primary btn-small" id="btn-install">Install app</button><button type="button" class="btn-ghost btn-small" id="btn-install-x">Not now</button></div>
+    </div>
+    <div id="install-help" hidden></div>
+  </div>
+
+  <p class="home-sub">Choose a form</p>
+  <div class="tiles">
+    <a class="tile" href="#charge-out" id="tile-chargeout">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3h6v3H9z"/><path d="M8.5 11h7M8.5 15h4.5"/></svg></span>
+      <span class="tt"><b>Charge Out</b><span class="hint">Hours, travel, KM and materials for a job, sent to Sam for invoicing.</span>
+        <span class="badges"><span class="badge" id="tile-jobs" hidden></span><span class="badge draft" id="tile-draft" hidden>Form started</span></span></span>
+    </a>
+  </div>
+</div>
+
+<div class="generic" id="generic">
+  <header class="top">
+    <div class="brand">
+      <small>NZ Conservation Services Ltd</small>
+      <h1 id="generic-title">Form</h1>
+    </div>
+    <div class="top-actions"><a class="btn btn-small back" href="#" id="generic-home">← All forms</a></div>
+  </header>
+  <form id="generic-body" autocomplete="off" novalidate onsubmit="return false"></form>
 </div>
 
 <div class="layout">
@@ -193,23 +271,15 @@ body:not(.locked) .gate{display:none}
     <header class="top">
       <div class="brand">
         <small>NZ Conservation Services Ltd</small>
-        <h1>Staff Charge Out</h1>
+        <h1>Charge Out</h1>
       </div>
       <div class="top-actions">
+        <a class="btn btn-small back" href="#" id="btn-home">← All forms</a>
         <span class="role" id="role-pill" hidden>Manager</span>
         <button type="button" id="btn-jobs" class="btn-small">Jobs in progress <span class="count" id="jobs-count">0</span></button>
         <span id="new-wrap"><button type="button" id="btn-new" class="btn-small">New form</button></span>
       </div>
     </header>
-
-    <div class="install" id="install-banner" hidden>
-      <div class="install-top">
-        <img src="icon-192.png" alt="">
-        <div class="txt"><b>Put the app on your home screen</b><span class="hint">Opens full screen like any app, and works with no signal.</span></div>
-        <div class="btns"><button type="button" class="btn-primary btn-small" id="btn-install">Install app</button><button type="button" class="btn-ghost btn-small" id="btn-install-x">Not now</button></div>
-      </div>
-      <div id="install-help" hidden></div>
-    </div>
 
     <div class="mode-banner" id="mode-banner" hidden>
       <span id="mode-text"></span>
@@ -302,12 +372,14 @@ body:not(.locked) .gate{display:none}
 
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jspdf.plugin.autotable.min.js"></script>
+<script src="forms.js"></script>
 <script>
 (function(){
 "use strict";
 /* ---- Who appears in the People dropdown, where forms go, and the storage service ---- */
 const STAFF = ["Gareth Coyle", "Wade McSoriley", "Nigel Spencer", "Dave Spedding", "Dave Walker", "Rob Grant", "Jonathan Poll", "Ruby Young", "Brandon Muller", "Tad Schultz"];
 const SEND_TO = "Admin@nzconservation.nz";
+window.NZCS_STAFF = STAFF;
 const API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? "http://localhost:8787" : "https://nzcs-chargeout-api.royal-dawn-9e17.workers.dev";
 
 const $ = s => document.querySelector(s);
@@ -338,7 +410,7 @@ async function api(method, path, body){
   return data;
 }
 function lock(msg){ store.del(AUTH_KEY); auth = null; document.body.classList.add("locked"); const e = $("#gate-err"); if (msg){ e.textContent = msg; e.hidden = false; } }
-function unlock(){ document.body.classList.remove("locked"); $("#role-pill").hidden = !(auth && auth.role === "manager"); setTimeout(sizeCanvas, 50); loadJobs(); }
+function unlock(){ document.body.classList.remove("locked"); const mgr = !(auth && auth.role === "manager"); $("#role-pill").hidden = mgr; $("#role-pill-home").hidden = mgr; route(); loadJobs(); }
 $("#gate-form").addEventListener("submit", async e => {
   e.preventDefault();
   const code = $("#gate-code").value.trim(), err = $("#gate-err"), btn = $("#gate-go");
@@ -588,6 +660,7 @@ async function loadJobs(){
     const res = await api("GET", "/api/jobs?status=open");
     jobsCache = res.jobs; if (res.role && auth && auth.role !== res.role){ auth.role = res.role; store.set(AUTH_KEY, auth); $("#role-pill").hidden = auth.role !== "manager"; }
     $("#jobs-count").textContent = jobsCache.length;
+    const tj = $("#tile-jobs"); tj.hidden = !jobsCache.length; tj.textContent = plural(jobsCache.length, "job") + " in progress";
     if (jobsView === "list") renderJobsList();
   }catch(err){ if (jobsView === "list") renderJobsList(err.message); }
 }
@@ -863,11 +936,44 @@ $("#btn-install").addEventListener("click", async () => {
 });
 $("#btn-install-x").addEventListener("click", () => { store.set(INSTALL_KEY, Date.now()); $("#install-banner").hidden = true; });
 
+/* ---------- home screen and form pages ---------- */
+// "#charge-out" opens the Charge Out form; anything else shows the home screen.
+const ENGINE = window.NZCS_FORMS_ENGINE;
+const ONEOFF = {};   // "#toolbox" -> "toolbox"
+if (ENGINE){
+  Object.entries(ENGINE.forms).forEach(([key, f]) => {
+    ONEOFF[f.hash] = key;
+    const a = document.createElement("a"); a.className = "tile"; a.href = f.hash; a.id = "tile-" + key;
+    a.innerHTML = `<span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${f.icon}</svg></span>
+      <span class="tt"><b>${esc(f.title)}</b><span class="hint">${esc(f.blurb)}</span><span class="badges"><span class="badge draft" id="tile-draft-${key}" hidden>Form started</span></span></span>`;
+    document.querySelector(".tiles").appendChild(a);
+  });
+}
+function route(){
+  const h = location.hash;
+  const view = h === "#charge-out" ? "chargeout" : ONEOFF[h] ? "generic" : "home";
+  document.body.classList.toggle("view-home", view === "home");
+  document.body.classList.toggle("view-form", view === "chargeout");
+  document.body.classList.toggle("view-generic", view === "generic");
+  if (view === "generic") ENGINE.open(ONEOFF[h]); else if (ENGINE) ENGINE.close();
+  if (view === "home"){
+    closePanel(); $("#tile-draft").hidden = formIsFree() && !finished;
+    if (ENGINE) Object.keys(ENGINE.forms).forEach(k => { $("#tile-draft-" + k).hidden = !ENGINE.isStarted(k); });
+  }
+  if (view === "chargeout") setTimeout(sizeCanvas, 30);
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", route);
+const goHome = e => { e.preventDefault(); history.replaceState(null, "", location.pathname); route(); };
+$("#btn-home").addEventListener("click", goHome);
+$("#generic-home").addEventListener("click", goHome);
+
 /* ---------- start ---------- */
 finished = store.get("nzcs.chargeout.finished", null);
 // Only keep a finished job on screen if it was finished today.
 if (finished && (!finished.completed_at || finished.completed_at.slice(0,10) !== new Date().toISOString().slice(0,10))) { finished = null; store.del("nzcs.chargeout.finished"); }
 renderAll();
+route();
 if (auth) unlock();
 requestAnimationFrame(sizeCanvas);
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
