@@ -124,6 +124,38 @@ const FORMS = {
       ]},
     ],
   },
+  kill: {
+    hash: "#kill-sheet",
+    title: "Kill Sheet",
+    pdfTitle: "NZCS Ungulate Control Kill Sheet",
+    blurb: "Shooting and counting: animals seen and shot, rifles used, time on the block.",
+    sendTo: ["team@nzconservation.nz", "operations@nzconservation.nz"],
+    sendToLabel: "Wade and Gareth",
+    icon: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>',
+    titleFrom: v => `${v.property || "Property"} ${dmy(v.when)}`,
+    sections: [
+      { title: "Job", fields: [
+        { id:"when", type:"datetime", label:"Date & time", required:true },
+        { id:"property", type:"text", label:"Property name and owner", placeholder:"Farm name and landowner", required:true },
+        { id:"location", type:"location", label:"Location" },
+        { id:"staff", type:"people", label:"Staff shooting / counting and others involved", required:true },
+        { id:"staffOther", type:"text", label:"Name of staff not listed above (if required)" },
+        { id:"rifles", type:"textarea", label:"Rifles and handhelds used" },
+        { id:"arrived", type:"time", label:"Time arrived at block" },
+        { id:"left", type:"time", label:"Time left block" },
+        { id:"activity", type:"choice", label:"Are you…", options:["Shooting","Counting"] },
+      ]},
+      { title: "Animals", fields: [
+        { id:"tally", type:"tally", label:"Animals seen and shot", columns:["Seen","Shot","Confirmed kills"],
+          rows:[{name:"Deer", cols:["Seen","Shot","Confirmed kills"]}, {name:"Possums", cols:["Seen","Shot"]}, {name:"Pigs", cols:["Seen","Shot"]}, {name:"Hares", cols:["Seen","Shot"]}, {name:"Goats", cols:["Seen","Shot"]}] },
+        { type:"notice", text:"Please remember to clean guns after every night shoot." },
+      ]},
+      { title: "Wrap up", fields: [
+        { id:"comments", type:"textarea", label:"Any comments about the job or problems encountered" },
+        { id:"signatures", type:"signatures", label:"Signature", required:true },
+      ]},
+    ],
+  },
 };
 window.NZCS_ONEOFF = FORMS;
 
@@ -137,6 +169,7 @@ const blankValues = form => {
     v[f.id] = f.type === "multi" || f.type === "people" || f.type === "photos" ? [] :
               f.type === "signatures" ? [{name:"", sig:""}] :
               f.type === "mixes" ? [{product:"", ml:"", litres:"", unit:"mL"}] :
+              f.type === "tally" ? {} :
               f.type === "datetime" ? nowLocal() :
               f.type === "location" ? {address:"", lat:null, lng:null} : "";
   }));
@@ -175,6 +208,15 @@ function fieldHTML(form, f, v){
       return `<div class="field"><label for="${id}">${esc(f.label)}${req}</label><input type="text" id="${id}" data-g="${f.id}" autocomplete="off" value="${esc(v[f.id])}" placeholder="${esc(f.placeholder || "")}">${err}</div>`;
     case "textarea":
       return `<div class="field"><label for="${id}">${esc(f.label)}${req}</label><textarea id="${id}" data-g="${f.id}" placeholder="${esc(f.placeholder || "")}">${esc(v[f.id])}</textarea>${err}</div>`;
+    case "time":
+      return `<div class="field"><label for="${id}">${esc(f.label)}${req}</label><input type="time" id="${id}" data-g="${f.id}" value="${esc(v[f.id])}">${err}</div>`;
+    case "tally": {
+      const T = v[f.id] || {};
+      return `<div class="field"><span class="label">${esc(f.label)}</span><div class="tally-scroll"><table class="tally"><thead><tr><th></th>${f.columns.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>` +
+        f.rows.map((r,ri) => `<tr><th scope="row">${esc(r.name)}</th>${f.columns.map((c,ci) => r.cols.includes(c)
+          ? `<td><input type="number" inputmode="numeric" min="0" step="1" id="${id}-${ri}-${ci}" data-gt="${f.id}" data-key="${esc(r.name + "|" + c)}" value="${esc(T[r.name + "|" + c] ?? "")}" placeholder="0" aria-label="${esc(r.name + " " + c.toLowerCase())}"></td>`
+          : `<td class="na">–</td>`).join("")}</tr>`).join("") + `</tbody></table></div></div>`;
+    }
     case "datetime":
       return `<div class="field"><label for="${id}">${esc(f.label)}${req}</label><input type="datetime-local" id="${id}" data-g="${f.id}" value="${esc(v[f.id])}">${err}</div>`;
     case "choice":
@@ -300,6 +342,7 @@ function bind(){
     if (t.dataset.g){ v[t.dataset.g] = t.value; const er = $(`#g-${t.dataset.g}-err`); if (er) er.hidden = true; }
     else if (t.dataset.gl){ v[t.dataset.gl].address = t.value; }
     else if (t.dataset.gso){ const s = v[t.dataset.gso][+t.dataset.i]; s.name = t.value; s.other = true; }
+    else if (t.dataset.gt){ const T = v[t.dataset.gt]; if (t.value === "") delete T[t.dataset.key]; else T[t.dataset.key] = t.value; }
     else if (t.dataset.gx){
       const m = v[t.dataset.gx][+t.dataset.i]; m[t.dataset.k] = t.value;
       const out = $(`#g-${t.dataset.gx}-${t.dataset.i}-rate`); if (out) out.textContent = mixRateText(m) || "–";
@@ -438,6 +481,7 @@ function validate(){
 function answerText(f, v){
   const a = v[f.id];
   if (f.type === "datetime") return dmyTime(a);
+  if (f.type === "tally") return f.rows.map(r => r.name + ": " + r.cols.map(c => `${c.toLowerCase()} ${a[r.name + "|" + c] || 0}`).join(", ")).join("\n");
   if (f.type === "mixes") return usedMixes(a).map(mixLine).join("\n");
   if (f.type === "location") return [a.address, a.lat != null ? `GPS ${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}` : ""].filter(Boolean).join("\n");
   if (Array.isArray(a)) return a.join(", ");
@@ -462,13 +506,26 @@ function buildPDF(){
     s.fields.forEach(f => {
       if (f.showIf && !f.showIf(v)) return;
       if (f.type === "notice"){ rows.push([{content:(f.title ? f.title + ": " : "") + f.text, colSpan:2, styles:{fontStyle:"italic", textColor:[70,80,72], fillColor:[247,248,245]}}]); return; }
-      if (f.type === "signatures" || f.type === "photos") return;
+      if (f.type === "signatures" || f.type === "photos" || f.type === "tally") return;
       rows.push([f.label, answerText(f, v)]);
       if (f.type === "location" && v[f.id].lat != null) links.push(`https://www.google.com/maps?q=${v[f.id].lat},${v[f.id].lng}`);
     });
+    let headed = false;
+    const head = () => { if (!headed){ heading(s.title); headed = true; } };
+    // Tally grids (e.g. animals seen / shot) come first in their section
+    s.fields.filter(f => f.type === "tally").forEach(f => {
+      const T = v[f.id]; head();
+      doc.autoTable(Object.assign({}, base, {startY:y, head:[["", ...f.columns]],
+        body:f.rows.map(r => [r.name, ...f.columns.map(c => r.cols.includes(c) ? String(T[r.name + "|" + c] || 0) : "–")]),
+        columnStyles:{0:{cellWidth:50, fontStyle:"bold", halign:"left"}}, headStyles:Object.assign({}, base.headStyles, {halign:"center"}), bodyStyles:{halign:"center"}}));
+      y = doc.lastAutoTable.finalY + (rows.length ? 4 : 10);
+    });
     if (rows.length){
-      heading(s.title);
-      doc.autoTable(Object.assign({}, base, {startY:y, body:rows,
+      head();
+      // A table of only notices has one column; otherwise notices span both columns.
+      const onlyNotices = rows.every(r => r.length === 1);
+      const body = onlyNotices ? rows.map(r => [Object.assign({}, r[0], {colSpan:1})]) : rows;
+      doc.autoTable(Object.assign({}, base, {startY:y, body, columnStyles: onlyNotices ? {0:{cellWidth:"auto"}} : base.columnStyles,
         didDrawCell: c => { if (c.section === "body" && c.column.index === 1 && /^GPS /m.test(String(c.cell.raw || "")) && links.length){ doc.link(c.cell.x, c.cell.y, c.cell.width, c.cell.height, {url:links[0]}); } }}));
       y = doc.lastAutoTable.finalY + 10;
     }
