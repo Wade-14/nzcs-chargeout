@@ -208,7 +208,7 @@ body:not(.locked) .gate{display:none}
         </div>
         <div class="field">
           <label for="f-job">Job name / Farm / Landowner / PCA</label>
-          <input type="text" id="f-job" data-k="job" autocomplete="off" placeholder="e.g. Willowbank Farm - Tony Miles">
+          <input type="text" id="f-job" data-k="job" autocomplete="off" placeholder="Farm name, landowner or location">
           <span class="err" id="err-job" hidden>Type the job name.</span>
         </div>
         <div class="field">
@@ -221,7 +221,7 @@ body:not(.locked) .gate{display:none}
         </div>
         <div class="field">
           <label for="f-tasks">Description of tasks</label>
-          <textarea id="f-tasks" data-k="tasks" placeholder="e.g. Release spraying natives"></textarea>
+          <textarea id="f-tasks" data-k="tasks" placeholder="What work did you do on the property today?"></textarea>
         </div>
       </section>
 
@@ -237,6 +237,7 @@ body:not(.locked) .gate{display:none}
 
       <section class="card">
         <h2>Materials used <button type="button" id="btn-addmat" class="btn-small btn-ghost">+ Add material</button></h2>
+        <p class="hint" style="margin:-6px 0 0">List all materials supplied by NZCS that were used on this job site.</p>
         <div id="mat-host" class="mats"></div>
       </section>
 
@@ -253,7 +254,7 @@ body:not(.locked) .gate{display:none}
         </div>
         <div class="field">
           <label for="f-comments">Additional comments</label>
-          <textarea id="f-comments" data-k="comments" placeholder="e.g. Left early due to wind"></textarea>
+          <textarea id="f-comments" data-k="comments" placeholder="Any comments about the job that would help with charging"></textarea>
         </div>
         <div class="field">
           <label for="f-signedby">Filled in by</label>
@@ -378,8 +379,8 @@ function renderHourTotals(){
 }
 function renderMaterials(){
   $("#mat-host").innerHTML = state.materials.map((m,i) => `<div class="mat-row">
-    <div class="field"><label for="m-${i}-item">Material</label><input type="text" id="m-${i}-item" autocomplete="off" data-mi="${i}" data-mk="item" value="${esc(m.item)}" placeholder="e.g. Glyphosate gel"></div>
-    <div class="field"><label for="m-${i}-qty">Quantity</label><input type="text" id="m-${i}-qty" autocomplete="off" data-mi="${i}" data-mk="qty" value="${esc(m.qty)}" placeholder="e.g. 100 g"></div>
+    <div class="field"><label for="m-${i}-item">Material</label><input type="text" id="m-${i}-item" autocomplete="off" data-mi="${i}" data-mk="item" value="${esc(m.item)}" placeholder="Material"></div>
+    <div class="field"><label for="m-${i}-qty">Quantity</label><input type="text" id="m-${i}-qty" autocomplete="off" data-mi="${i}" data-mk="qty" value="${esc(m.qty)}" placeholder="Amount"></div>
     <button type="button" class="icon-btn" id="m-${i}-del" data-mdel="${i}" aria-label="Remove material ${i+1}">×</button>
   </div>`).join("") || `<p class="hint" style="margin:0">No materials used.</p>`;
 }
