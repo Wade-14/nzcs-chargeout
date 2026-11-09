@@ -207,11 +207,17 @@ body.view-generic .home,body.view-generic .layout,body.view-generic .bar,body.lo
 .photo .icon-btn{position:absolute;top:4px;right:4px;background:var(--surface);border-radius:50%;width:34px;min-height:34px}
 .photo-add{justify-self:start}
 .mixes{display:grid;gap:10px}
-.mix{display:grid;grid-template-columns:minmax(0,1fr) 92px 92px 84px 44px;gap:8px;align-items:end;background:var(--sunken);border:1px solid var(--line);border-radius:10px;padding:10px}
+.amt{display:flex;gap:6px;align-items:stretch}
+.amt input{flex:1;min-width:0}
+.unit-seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:none}
+.unit-seg button{border:0;border-radius:0;min-width:40px;padding:0 8px;min-height:42px;background:var(--surface);font-size:14px}
+.unit-seg button+button{border-left:1px solid var(--line)}
+.unit-seg button[aria-pressed="true"]{background:var(--forest);color:var(--forest-ink)}
+.mix{display:grid;grid-template-columns:minmax(0,1fr) 170px 92px 84px 44px;gap:8px;align-items:end;background:var(--sunken);border:1px solid var(--line);border-radius:10px;padding:10px}
 .mix .field label{font-size:12px;color:var(--muted);font-weight:500}
 .mix-rate{display:grid;gap:2px;padding-bottom:10px;font-variant-numeric:tabular-nums}
 .mix-rate b{font-size:16px;color:var(--forest);white-space:nowrap}
-@media (max-width:600px){.mix{grid-template-columns:1fr 1fr 44px}.mix>.mix-prod{grid-column:1/3;grid-row:1}.mix>.field:nth-child(2){grid-column:1;grid-row:2}.mix>.field:nth-child(3){grid-column:2;grid-row:2}.mix>.mix-rate{grid-column:1/3;grid-row:3}.mix>.mix-del{grid-column:3;grid-row:1}}
+@media (max-width:600px){.mix{grid-template-columns:1fr 1fr 44px}.mix>.mix-prod{grid-column:1/3;grid-row:1}.mix>.field:nth-child(2){grid-column:1/3;grid-row:2}.mix>.field:nth-child(3){grid-column:1;grid-row:3}.mix>.mix-rate{grid-column:2/4;grid-row:3}.mix>.mix-del{grid-column:3;grid-row:1}}
 .loc-map{width:100%;max-width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 </style>

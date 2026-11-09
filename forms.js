@@ -126,7 +126,7 @@ const blankValues = form => {
     if (!f.id) return;
     v[f.id] = f.type === "multi" || f.type === "people" || f.type === "photos" ? [] :
               f.type === "signatures" ? [{name:"", sig:""}] :
-              f.type === "mixes" ? [{product:"", ml:"", litres:""}] :
+              f.type === "mixes" ? [{product:"", ml:"", litres:"", unit:"mL"}] :
               f.type === "datetime" ? nowLocal() :
               f.type === "location" ? {address:"", lat:null, lng:null} : "";
   }));
@@ -143,11 +143,12 @@ const isStarted = key => {
 const num = v => { const x = parseFloat(String(v).replace(",", ".")); return isFinite(x) ? x : NaN; };
 const trim = x => String(Math.round(x * 100) / 100);
 function mixRate(m){ const ml = num(m.ml), l = num(m.litres); return ml >= 0 && l > 0 ? ml / l : NaN; }
-function mixRateText(m){ const r = mixRate(m); return isNaN(r) ? "" : trim(r) + " mL/L"; }
+const unitOf = m => m.unit === "g" ? "g" : "mL";
+function mixRateText(m){ const r = mixRate(m); return isNaN(r) ? "" : trim(r) + " " + unitOf(m) + "/L"; }
 function mixLine(m){
-  const r = mixRate(m), parts = [m.product.trim() || "Unnamed product"];
-  if (m.ml !== "" || m.litres !== "") parts.push(`${m.ml || "?"} mL in ${m.litres || "?"} L water`);
-  return parts.join(": ") + (isNaN(r) ? "" : ` = ${trim(r)} mL/L`);
+  const r = mixRate(m), u = unitOf(m), parts = [m.product.trim() || "Unnamed product"];
+  if (m.ml !== "" || m.litres !== "") parts.push(`${m.ml || "?"} ${u} in ${m.litres || "?"} L water`);
+  return parts.join(": ") + (isNaN(r) ? "" : ` = ${trim(r)} ${u}/L`);
 }
 const usedMixes = list => (list || []).filter(m => m.product.trim() || m.ml !== "" || m.litres !== "");
 
@@ -200,10 +201,11 @@ function fieldHTML(form, f, v){
     }
     case "mixes": {
       const list = v[f.id] || [];
-      return `<div class="field"><span class="label">${esc(f.label)}</span><span class="hint">Enter the mL of concentrate and the litres of water. The rate per litre is worked out for you.</span>
+      return `<div class="field"><span class="label">${esc(f.label)}</span><span class="hint">Enter how much product (mL for liquids, g for granules) and the litres of water. The rate per litre is worked out for you.</span>
         <div class="mixes">${list.map((m,i) => `<div class="mix">
           <div class="field mix-prod"><label for="${id}-${i}-product">${f.noun === "additive" ? "Additive" : "Chemical"}</label><input type="text" id="${id}-${i}-product" data-gx="${f.id}" data-i="${i}" data-k="product" autocomplete="off" value="${esc(m.product)}" placeholder="${esc(f.productHint || "")}"></div>
-          <div class="field"><label for="${id}-${i}-ml">mL used</label><input type="number" inputmode="decimal" min="0" step="any" id="${id}-${i}-ml" data-gx="${f.id}" data-i="${i}" data-k="ml" value="${esc(m.ml)}" placeholder="150"></div>
+          <div class="field mix-amt"><label for="${id}-${i}-ml">Amount used</label><div class="amt"><input type="number" inputmode="decimal" min="0" step="any" id="${id}-${i}-ml" data-gx="${f.id}" data-i="${i}" data-k="ml" value="${esc(m.ml)}" placeholder="150">
+            <span class="unit-seg" role="group" aria-label="Unit">${["mL","g"].map(u => `<button type="button" id="${id}-${i}-unit-${u}" data-mixunit="${f.id}" data-i="${i}" data-val="${u}" aria-pressed="${unitOf(m) === u}">${u}</button>`).join("")}</span></div></div>
           <div class="field"><label for="${id}-${i}-litres">Litres of water</label><input type="number" inputmode="decimal" min="0" step="any" id="${id}-${i}-litres" data-gx="${f.id}" data-i="${i}" data-k="litres" value="${esc(m.litres)}" placeholder="18"></div>
           <div class="mix-rate"><span class="hint">Rate</span><b id="${id}-${i}-rate">${esc(mixRateText(m)) || "–"}</b></div>
           ${list.length > 1 ? `<button type="button" class="icon-btn mix-del" data-mixdel="${f.id}" data-i="${i}" aria-label="Remove ${f.noun} ${i+1}">×</button>` : ""}
@@ -327,7 +329,13 @@ function bind(){
     if (t.dataset.sigadd){ v[t.dataset.sigadd].push({name:"", sig:""}); render(); return; }
     if (t.dataset.sigdel){ v.signatures.splice(+t.dataset.sigdel, 1); render(); return; }
     if (t.dataset.sigclear){ v.signatures[+t.dataset.sigclear].sig = ""; render(); return; }
-    if (t.dataset.mixadd){ const list = v[t.dataset.mixadd]; const last = list[list.length - 1] || {}; list.push({product:"", ml:"", litres:last.litres || ""}); render(); const el = $(`#g-${t.dataset.mixadd}-${list.length - 1}-product`); if (el) el.focus(); return; }
+    if (t.dataset.mixadd){ const list = v[t.dataset.mixadd]; const last = list[list.length - 1] || {}; list.push({product:"", ml:"", litres:last.litres || "", unit:"mL"}); render(); const el = $(`#g-${t.dataset.mixadd}-${list.length - 1}-product`); if (el) el.focus(); return; }
+    if (t.dataset.mixunit){
+      const m = v[t.dataset.mixunit][+t.dataset.i]; m.unit = t.dataset.val === "g" ? "g" : "mL";
+      t.parentElement.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.val === unitOf(m))));
+      const out = $(`#g-${t.dataset.mixunit}-${t.dataset.i}-rate`); if (out) out.textContent = mixRateText(m) || "–";
+      return;
+    }
     if (t.dataset.mixdel){ v[t.dataset.mixdel].splice(+t.dataset.i, 1); render(); return; }
     if (t.dataset.photodel){ v[t.dataset.photodel].splice(+t.dataset.i, 1); render(); return; }
     if (t.dataset.locate) return locate(t.dataset.locate, t);
