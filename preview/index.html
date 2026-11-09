@@ -55,7 +55,7 @@ section.card>h2{margin:0;font-family:var(--f-display);font-weight:600;font-size:
 .field{display:grid;gap:6px;min-width:0}
 label,.label{font-weight:600;font-size:14px}
 .hint{font-size:13px;color:var(--muted);font-weight:400}
-input[type=password],input[type=text],input[type=date],input[type=number],textarea,select{
+input[type=password],input[type=text],input[type=date],input[type=datetime-local],input[type=number],textarea,select{
   width:100%;font:inherit;color:var(--ink);background:var(--sunken);border:1px solid var(--line);border-radius:8px;padding:11px 12px;min-height:46px}
 textarea{min-height:84px;resize:vertical}
 input[readonly]{background:var(--forest-soft);border-color:transparent;font-weight:600}
@@ -183,6 +183,29 @@ body:not(.locked) .gate{display:none}
 body.view-home .layout,body.view-home .bar{display:none}
 body.view-form .home{display:none}
 body.locked .home{display:none}
+.generic{display:none;max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 60px}
+body.view-generic .generic{display:block}
+body.view-generic .home,body.view-generic .layout,body.view-generic .bar,body.locked .generic{display:none!important}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--sunken);color:var(--ink);border-radius:999px;padding:8px 14px;min-height:42px;font-weight:500;font-size:15px}
+.chip[aria-pressed="true"]{background:var(--forest);border-color:var(--forest);color:var(--forest-ink)}
+.chip.multi[aria-pressed="true"]::before{content:"✓ "}
+.notice{background:var(--amber-soft);color:var(--ink);border-left:4px solid var(--hivis);border-radius:8px;padding:12px 14px;display:grid;gap:4px}
+.notice p{margin:0;font-size:15px}
+.notice b{color:var(--amber)}
+.loc-row{display:flex;gap:8px}
+.loc-row input{flex:1;min-width:0}
+.loc-row button{flex:none}
+.sigs{display:grid;gap:12px}
+.sig-item{display:grid;gap:8px;background:var(--sunken);border:1px solid var(--line);border-radius:10px;padding:10px}
+.sig-item-head{display:flex;gap:8px;align-items:center}
+.sig-item-head select{flex:1;min-width:0}
+.sig-wrap.small{height:130px}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.photo{position:relative}
+.photo img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block;max-width:100%}
+.photo .icon-btn{position:absolute;top:4px;right:4px;background:var(--surface);border-radius:50%;width:34px;min-height:34px}
+.photo-add{justify-self:start}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 </style>
 </head>
@@ -226,6 +249,17 @@ body.locked .home{display:none}
         <span class="badges"><span class="badge" id="tile-jobs" hidden></span><span class="badge draft" id="tile-draft" hidden>Form started</span></span></span>
     </a>
   </div>
+</div>
+
+<div class="generic" id="generic">
+  <header class="top">
+    <div class="brand">
+      <small>NZ Conservation Services Ltd</small>
+      <h1 id="generic-title">Form</h1>
+    </div>
+    <div class="top-actions"><a class="btn btn-small back" href="#" id="generic-home">← All forms</a></div>
+  </header>
+  <form id="generic-body" autocomplete="off" novalidate onsubmit="return false"></form>
 </div>
 
 <div class="layout">
@@ -338,12 +372,14 @@ body.locked .home{display:none}
 
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jspdf.plugin.autotable.min.js"></script>
+<script src="forms.js"></script>
 <script>
 (function(){
 "use strict";
 /* ---- Who appears in the People dropdown, where forms go, and the storage service ---- */
 const STAFF = ["Gareth Coyle", "Wade McSoriley", "Nigel Spencer", "Dave Spedding", "Dave Walker", "Rob Grant", "Jonathan Poll", "Ruby Young", "Brandon Muller", "Tad Schultz"];
 const SEND_TO = "Admin@nzconservation.nz";
+window.NZCS_STAFF = STAFF;
 const API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? "http://localhost:8787" : "https://nzcs-chargeout-api.royal-dawn-9e17.workers.dev";
 
 const $ = s => document.querySelector(s);
@@ -902,17 +938,35 @@ $("#btn-install-x").addEventListener("click", () => { store.set(INSTALL_KEY, Dat
 
 /* ---------- home screen and form pages ---------- */
 // "#charge-out" opens the Charge Out form; anything else shows the home screen.
-const FORMS = {"#charge-out": "chargeout"};
+const ENGINE = window.NZCS_FORMS_ENGINE;
+const ONEOFF = {};   // "#toolbox" -> "toolbox"
+if (ENGINE){
+  Object.entries(ENGINE.forms).forEach(([key, f]) => {
+    ONEOFF[f.hash] = key;
+    const a = document.createElement("a"); a.className = "tile"; a.href = f.hash; a.id = "tile-" + key;
+    a.innerHTML = `<span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${f.icon}</svg></span>
+      <span class="tt"><b>${esc(f.title)}</b><span class="hint">${esc(f.blurb)}</span><span class="badges"><span class="badge draft" id="tile-draft-${key}" hidden>Form started</span></span></span>`;
+    document.querySelector(".tiles").appendChild(a);
+  });
+}
 function route(){
-  const view = FORMS[location.hash] || "home";
+  const h = location.hash;
+  const view = h === "#charge-out" ? "chargeout" : ONEOFF[h] ? "generic" : "home";
   document.body.classList.toggle("view-home", view === "home");
-  document.body.classList.toggle("view-form", view !== "home");
-  if (view === "home"){ closePanel(); $("#tile-draft").hidden = formIsFree() && !finished; }
-  else setTimeout(sizeCanvas, 30);
+  document.body.classList.toggle("view-form", view === "chargeout");
+  document.body.classList.toggle("view-generic", view === "generic");
+  if (view === "generic") ENGINE.open(ONEOFF[h]); else if (ENGINE) ENGINE.close();
+  if (view === "home"){
+    closePanel(); $("#tile-draft").hidden = formIsFree() && !finished;
+    if (ENGINE) Object.keys(ENGINE.forms).forEach(k => { $("#tile-draft-" + k).hidden = !ENGINE.isStarted(k); });
+  }
+  if (view === "chargeout") setTimeout(sizeCanvas, 30);
   window.scrollTo(0, 0);
 }
 window.addEventListener("hashchange", route);
-$("#btn-home").addEventListener("click", e => { e.preventDefault(); history.replaceState(null, "", location.pathname); route(); });
+const goHome = e => { e.preventDefault(); history.replaceState(null, "", location.pathname); route(); };
+$("#btn-home").addEventListener("click", goHome);
+$("#generic-home").addEventListener("click", goHome);
 
 /* ---------- start ---------- */
 finished = store.get("nzcs.chargeout.finished", null);
