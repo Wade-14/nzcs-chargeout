@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en-NZ">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>NZCS Charge Out</title>
+<meta name="theme-color" content="#1d5a40">
+<meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one phone-first column of form sections, with a sticky bar at the bottom that keeps the Finish button in reach. */
+:root{
+  --bg:#eef2ee; --surface:#ffffff; --sunken:#f5f7f4; --line:#d3dbd3; --ink:#15211a; --muted:#56655b;
+  --forest:#1d5a40; --forest-ink:#ffffff; --forest-soft:#dcebe2; --hivis:#e0692a;
+  --danger:#b3261e; --pad:#ffffff;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#101713; --surface:#18221c; --sunken:#131c17; --line:#2c3a31; --ink:#e6eee8; --muted:#9aaba0;
+  --forest:#5fb88c; --forest-ink:#0c1a12; --forest-soft:#1f3a2c; --hivis:#f08a4f;
+  --danger:#ff8a80; --pad:#f4f6f2; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#101713; --surface:#18221c; --sunken:#131c17; --line:#2c3a31; --ink:#e6eee8; --muted:#9aaba0;
+  --forest:#5fb88c; --forest-ink:#0c1a12; --forest-soft:#1f3a2c; --hivis:#f08a4f;
+  --danger:#ff8a80; --pad:#f4f6f2; color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{color-scheme:light}
+:root{padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;-webkit-text-size-adjust:100%;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45}
+.wrap{max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 120px}
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-bottom:14px;border-bottom:3px solid var(--forest);margin-bottom:18px}
+.brand small{display:block;font-family:var(--f-display);text-transform:uppercase;letter-spacing:.12em;font-size:13px;color:var(--muted);font-weight:600}
+.brand h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:34px;line-height:1;letter-spacing:.01em}
+
+section.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:14px;display:grid;gap:14px}
+section.card>h2{margin:0;font-family:var(--f-display);font-weight:600;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--forest);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.row{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+.row>*{min-width:0}
+@media (max-width:540px){.row{grid-template-columns:1fr}}
+.field{display:grid;gap:6px;min-width:0}
+label,.label{font-weight:600;font-size:14px}
+.hint{font-size:13px;color:var(--muted);font-weight:400}
+input[type=password],input[type=text],input[type=date],input[type=number],textarea{
+  width:100%;font:inherit;color:var(--ink);background:var(--sunken);border:1px solid var(--line);border-radius:8px;padding:11px 12px;min-height:46px}
+textarea{min-height:84px;resize:vertical}
+input:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var(--hivis);outline-offset:1px}
+.invalid{border-color:var(--danger)!important}
+.err{color:var(--danger);font-size:13px;font-weight:600}
+
+button,.btn{font:inherit;font-weight:600;font-size:15px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 14px;min-height:44px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none}
+button:hover,.btn:hover{border-color:var(--forest)}
+.btn-primary{background:var(--forest);border-color:var(--forest);color:var(--forest-ink)}
+.btn-hivis{background:var(--hivis);border-color:var(--hivis);color:#1a0d05}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--forest);padding-inline:8px}
+.btn-small{min-height:36px;padding:6px 10px;font-size:14px}
+.icon-btn{min-height:44px;width:44px;padding:0;font-size:22px;line-height:1;color:var(--muted)}
+
+/* people dropdown */
+details.dd{position:relative}
+details.dd summary{list-style:none;cursor:pointer;background:var(--sunken);border:1px solid var(--line);border-radius:8px;padding:11px 40px 11px 12px;min-height:46px;position:relative}
+details.dd summary::-webkit-details-marker{display:none}
+details.dd summary::after{content:"";position:absolute;right:16px;top:50%;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-70%) rotate(45deg)}
+details.dd[open] summary::after{transform:translateY(-30%) rotate(-135deg)}
+details.dd summary .ph{color:var(--muted)}
+.dd-list{margin-top:6px;background:var(--surface);border:1px solid var(--line);border-radius:8px;max-height:320px;overflow:auto;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.dd-list label{display:flex;align-items:center;gap:12px;padding:12px 14px;font-weight:500;font-size:16px;cursor:pointer;border-bottom:1px solid var(--line)}
+.dd-list label:last-of-type{border-bottom:0}
+.dd-list input{width:22px;height:22px;accent-color:var(--forest);flex:none}
+.dd-done{display:flex;justify-content:flex-end;padding:8px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--surface)}
+
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;justify-self:start}
+.seg button{border:0;border-radius:0;min-width:96px;background:var(--sunken)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--forest);color:var(--forest-ink)}
+
+table.hrs{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+table.hrs th{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.08em;font-size:13px;color:var(--muted);text-align:left;font-weight:600;padding:4px 6px}
+table.hrs td{padding:5px 6px;vertical-align:middle}
+table.hrs td.name{font-weight:600;overflow-wrap:anywhere}
+table.hrs input{max-width:110px;min-height:44px}
+table.hrs tfoot td{font-weight:700;padding-top:10px;border-top:1px solid var(--line)}
+.mats{display:grid;gap:10px}
+.mat-row{display:grid;grid-template-columns:minmax(0,1fr) 140px 44px;gap:8px;align-items:end}
+@media (max-width:540px){.mat-row{grid-template-columns:minmax(0,1fr) 110px 44px}}
+.mat-row .field label{font-size:12px;color:var(--muted);font-weight:500}
+
+.sig-wrap{position:relative;background:var(--pad);border:1px dashed var(--muted);border-radius:8px;height:170px;touch-action:none}
+.sig-wrap canvas{width:100%;height:100%;display:block;cursor:crosshair}
+.sig-wrap .sig-hint{position:absolute;inset:auto 0 12px;text-align:center;color:#8a958e;font-size:14px;pointer-events:none}
+.sig-line{position:absolute;left:24px;right:24px;bottom:40px;border-bottom:1px solid #c5ccc6;pointer-events:none}
+
+.send-steps{display:grid;gap:14px}
+.step{display:grid;grid-template-columns:32px 1fr;gap:12px;align-items:start}
+.step-n{width:32px;height:32px;border-radius:50%;background:var(--forest-soft);color:var(--forest);font-family:var(--f-display);font-weight:700;font-size:18px;display:grid;place-items:center}
+.step-body{display:grid;gap:8px;min-width:0}
+.step-body .btns{display:flex;flex-wrap:wrap;gap:8px}
+.addr{font-family:ui-monospace,Menlo,monospace;font-size:14px;background:var(--sunken);border:1px solid var(--line);border-radius:6px;padding:4px 8px;user-select:all;word-break:break-all}
+.status{font-size:14px;color:var(--forest);font-weight:600;min-height:1.2em}
+.status.bad{color:var(--danger)}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px}
+
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(0,0,0,.08);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+.bar-in{max-width:720px;margin:0 auto;display:flex;gap:12px;align-items:center;justify-content:space-between}
+.bar-sum{font-size:14px;color:var(--muted);min-width:0;font-variant-numeric:tabular-nums}
+.bar-sum b{color:var(--ink)}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+.gate{min-height:100vh;display:grid;place-items:center;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px}
+.gate-card{width:100%;max-width:380px;background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--forest);border-radius:var(--r);padding:24px;display:grid;gap:14px}
+.gate-card h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:30px;line-height:1}
+.gate-card small{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.12em;font-size:13px;color:var(--muted);font-weight:600}
+.gate-card input{font-size:18px;letter-spacing:.06em}
+body.locked .wrap,body.locked .bar{display:none}
+</style>
+
+</head>
+<body class="locked">
+<div class="gate" id="gate">
+  <form class="gate-card" id="gate-form" autocomplete="off">
+    <div><small>NZ Conservation Services Ltd</small><h1>Staff Charge Out</h1></div>
+    <div class="field">
+      <label for="gate-code">Enter the share code</label>
+      <input type="password" id="gate-code" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Share code">
+      <span class="hint">Ask the office if you don't have it. You only need to enter it once on this phone.</span>
+    </div>
+    <button type="submit" class="btn-primary" id="gate-go">Open form</button>
+    <span class="err" id="gate-err" role="alert" hidden>That code isn't right. Check it and try again.</span>
+  </form>
+</div>
+<script>
+(function(){
+  var HASH = "28d92b58b40889e87b28182dd8030c9ff3ba01b0f71afe1d2f473f9d58290a27";
+  var KEY = "nzcs.chargeout.unlocked";
+  function unlock(){ document.body.classList.remove("locked"); var g = document.getElementById("gate"); g.parentNode.removeChild(g); window.dispatchEvent(new Event("resize")); }
+  try{ if (localStorage.getItem(KEY) === HASH){ unlock(); return; } }catch(e){}
+  document.getElementById("gate-form").addEventListener("submit", function(e){
+    e.preventDefault();
+    var v = document.getElementById("gate-code").value.trim().toLowerCase();
+    var err = document.getElementById("gate-err");
+    if (!window.crypto || !crypto.subtle){ err.textContent = "Open this app from its https:// web address."; err.hidden = false; return; }
+    crypto.subtle.digest("SHA-256", new TextEncoder().encode("nzcs-chargeout:" + v)).then(function(buf){
+      var hex = Array.prototype.map.call(new Uint8Array(buf), function(b){ return ("0" + b.toString(16)).slice(-2); }).join("");
+      if (hex === HASH){ try{ localStorage.setItem(KEY, HASH); }catch(e){} unlock(); }
+      else { err.textContent = "That code isn't right. Check it and try again."; err.hidden = false; }
+    });
+  });
+})();
+</script>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <small>NZ Conservation Services Ltd</small>
+      <h1>Staff Charge Out</h1>
+    </div>
+    <span id="new-wrap"><button type="button" id="btn-new" class="btn-small">New form</button></span>
+  </header>
+
+  <form id="form" autocomplete="off" novalidate>
+    <section class="card">
+      <h2>Job</h2>
+      <div class="field">
+        <label for="f-date">Date</label>
+        <input type="date" id="f-date" data-k="date">
+      </div>
+      <div class="field">
+        <label for="f-job">Job name / Farm / Landowner / PCA</label>
+        <input type="text" id="f-job" data-k="job" autocomplete="off" placeholder="e.g. Willowbank Farm - Tony Miles">
+        <span class="err" id="err-job" hidden>Type the job name.</span>
+      </div>
+      <div class="field">
+        <span class="label" id="lbl-people">People on site</span>
+        <details class="dd" id="dd-people">
+          <summary id="dd-summary" aria-labelledby="lbl-people"></summary>
+          <div class="dd-list" id="dd-list"></div>
+        </details>
+        <span class="err" id="err-people" hidden>Tick at least one person.</span>
+      </div>
+      <div class="field">
+        <label for="f-tasks">Description of tasks</label>
+        <textarea id="f-tasks" data-k="tasks" placeholder="e.g. Release spraying natives"></textarea>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Hours &amp; travel</h2>
+      <div id="hours-host"></div>
+      <div class="field">
+        <label for="f-km">KM travelled</label>
+        <input type="number" id="f-km" data-k="km" inputmode="decimal" min="0" step="1" placeholder="0">
+        <span class="hint">Total for all vehicles</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Materials used <button type="button" id="btn-addmat" class="btn-small btn-ghost">+ Add material</button></h2>
+      <div id="mat-host" class="mats"></div>
+    </section>
+
+    <section class="card">
+      <h2>Job wrap up</h2>
+      <div class="field">
+        <span class="label">Is job complete and ready to charge?</span>
+        <div class="seg" role="group" aria-label="Job complete">
+          <button type="button" id="f-complete-yes" data-complete="Yes" aria-pressed="false">Yes</button>
+          <button type="button" id="f-complete-no" data-complete="No" aria-pressed="false">No</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="f-comments">Additional comments</label>
+        <textarea id="f-comments" data-k="comments" placeholder="e.g. Left early due to wind"></textarea>
+      </div>
+      <div class="field">
+        <span class="label" style="display:flex;justify-content:space-between;align-items:center">Signature <button type="button" id="btn-sigclear" class="btn-small btn-ghost">Clear</button></span>
+        <div class="sig-wrap" id="sig-wrap"><div class="sig-line"></div><canvas id="sig"></canvas><div class="sig-hint" id="sig-hint">Sign here with your finger</div></div>
+        <span class="err" id="err-sig" hidden>Sign the form before saving.</span>
+      </div>
+    </section>
+
+    <section class="card" id="finish">
+      <h2>Send it</h2>
+      <div class="send-steps">
+        <div class="step">
+          <div class="step-n">1</div>
+          <div class="step-body">
+            <b>Send the PDF to Admin</b>
+            <div><span class="hint">To:</span> <span class="addr" id="to-addr"></span></div>
+            <div class="btns"><button type="button" id="btn-share" class="btn-hivis">Send PDF</button></div>
+            <span class="hint" id="share-hint">Opens your phone's share menu with the PDF attached. Pick Gmail or Outlook, then paste Admin's address into the To line (it's copied for you).</span>
+            <div class="status" id="share-status" role="status"></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-n">2</div>
+          <div class="step-body">
+            <b>Or save it and email it yourself</b>
+            <div class="btns">
+              <button type="button" id="btn-pdf">Download PDF</button>
+              <a class="btn" id="btn-mail" href="#">Open email to Admin</a>
+              <button type="button" id="btn-copy">Copy email text</button>
+            </div>
+            <span class="hint">Download the PDF, open the email, then attach the PDF from your Downloads.</span>
+            <div class="status" id="pdf-status" role="status"></div>
+            <div class="status" id="copy-status" role="status"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </form>
+</div>
+
+<div class="bar">
+  <div class="bar-in">
+    <div class="bar-sum" id="bar-sum"></div>
+    <a href="#finish" class="btn btn-hivis" id="btn-finish">Finish</a>
+  </div>
+</div>
+
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="vendor/jspdf.plugin.autotable.min.js"></script>
+<script>
+(function(){
+"use strict";
+/* ---- Who appears in the People dropdown, and where forms go ---- */
+const STAFF = ["Gareth Coyle", "Wade McSoriley", "Nigel Spencer", "Dave Spedding", "Dave Walker", "Rob Grant", "Jonathan Poll", "Ruby Young", "Brandon Muller", "Tad Schultz"];
+const SEND_TO = "Admin@nzconservation.nz";
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+const todayISO = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+const dmy = iso => iso ? iso.split("-").reverse().join("-") : "";
+const n = v => { const x = parseFloat(v); return isFinite(x) ? x : 0; };
+const hrsTxt = v => v === "" || v == null ? "" : n(v) + (n(v) === 1 ? " hour" : " hours");
+
+const blank = () => ({date:todayISO(), job:"", people:[], tasks:"", hours:{}, km:"", materials:[{item:"", qty:""}], complete:"", comments:"", signature:""});
+const KEY = "nzcs.chargeout.v3";
+let state = Object.assign(blank(), store.get(KEY, {}));
+// A form nobody has started yet always opens on today's date.
+const isEmpty = s => !s.job && !s.people.length && !s.tasks && !Object.values(s.hours || {}).some(h => h.work || h.travel) && !s.km && !s.comments && !s.signature && !s.materials.some(m => m.item || m.qty);
+if (isEmpty(state)) state.date = todayISO();
+const save = () => store.set(KEY, state);
+
+const sheetTitle = () => `NZCS Staff Charge Out - ${state.job.trim() || "Job"} ${dmy(state.date)}`;
+const matList = () => state.materials.filter(m => m.item.trim());
+const hoursOf = (p, k) => ((state.hours[p] || {})[k] ?? "");
+const totalOf = k => state.people.reduce((s,p) => s + n(hoursOf(p,k)), 0);
+
+/* ---------- render ---------- */
+function renderPeople(){
+  const names = Array.from(new Set(STAFF.concat(state.people)));
+  $("#dd-list").innerHTML = names.map((nm,i) => `<label for="p-${i}"><input type="checkbox" id="p-${i}" data-person="${esc(nm)}" ${state.people.includes(nm) ? "checked" : ""}> ${esc(nm)}</label>`).join("")
+    + `<div class="dd-done"><button type="button" class="btn-small btn-primary" id="dd-close">Done</button></div>`;
+  renderSummary();
+}
+function renderSummary(){
+  $("#dd-summary").innerHTML = state.people.length ? esc(state.people.join(", ")) : `<span class="ph">Tick who was on site</span>`;
+}
+function renderMaterials(){
+  $("#mat-host").innerHTML = state.materials.map((m,i) => `<div class="mat-row">
+    <div class="field"><label for="m-${i}-item">Material</label><input type="text" id="m-${i}-item" autocomplete="off" data-mi="${i}" data-mk="item" value="${esc(m.item)}" placeholder="e.g. Glyphosate gel"></div>
+    <div class="field"><label for="m-${i}-qty">Quantity</label><input type="text" id="m-${i}-qty" autocomplete="off" data-mi="${i}" data-mk="qty" value="${esc(m.qty)}" placeholder="e.g. 100 g"></div>
+    <button type="button" class="icon-btn" id="m-${i}-del" data-mdel="${i}" aria-label="Remove material ${i+1}">×</button>
+  </div>`).join("") || `<p class="hint" style="margin:0">No materials used.</p>`;
+}
+function renderHours(){
+  const host = $("#hours-host");
+  if (!state.people.length){ host.innerHTML = `<p class="hint" style="margin:0">Tick the people on site above and a row for each person appears here.</p>`; return; }
+  host.innerHTML = `<table class="hrs"><thead><tr><th>Person</th><th>Hours worked</th><th>Hours travelled</th></tr></thead><tbody>` +
+    state.people.map((p,i) => `<tr><td class="name">${esc(p)}</td>
+      <td><input type="number" inputmode="decimal" min="0" step="0.25" autocomplete="off" id="h-${i}-work" data-person-h="${esc(p)}" data-kind="work" value="${esc(hoursOf(p,'work'))}" placeholder="0" aria-label="Hours worked by ${esc(p)}"></td>
+      <td><input type="number" inputmode="decimal" min="0" step="0.25" autocomplete="off" id="h-${i}-travel" data-person-h="${esc(p)}" data-kind="travel" value="${esc(hoursOf(p,'travel'))}" placeholder="0" aria-label="Hours travelled by ${esc(p)}"></td></tr>`).join("") +
+    `</tbody>${state.people.length > 1 ? `<tfoot><tr><td>Total</td><td id="h-tot-work"></td><td id="h-tot-travel"></td></tr></tfoot>` : ""}</table>` +
+    (state.people.length > 1 ? `<button type="button" id="btn-samehours" class="btn-small btn-ghost" style="margin-top:6px">Copy first person's hours to everyone</button>` : "");
+  renderHourTotals();
+}
+function renderHourTotals(){
+  const w = $("#h-tot-work"), t = $("#h-tot-travel");
+  if (w) w.textContent = totalOf("work"); if (t) t.textContent = totalOf("travel");
+}
+function renderScalars(){
+  document.querySelectorAll("[data-k]").forEach(el => { el.value = state[el.dataset.k] ?? ""; });
+  document.querySelectorAll("[data-complete]").forEach(b => b.setAttribute("aria-pressed", String(state.complete === b.dataset.complete)));
+}
+function renderBar(){
+  $("#bar-sum").innerHTML = `<b>${totalOf("work")}</b> hrs worked · <b>${totalOf("travel")}</b> hrs travel · <b>${n(state.km)}</b> km`;
+  $("#to-addr").textContent = SEND_TO;
+  $("#btn-mail").href = `mailto:${SEND_TO}?subject=${encodeURIComponent(sheetTitle())}&body=${encodeURIComponent(emailBody())}`;
+}
+function renderAll(){ renderScalars(); renderPeople(); renderHours(); renderMaterials(); renderBar(); loadSignature(); }
+
+/* ---------- events ---------- */
+const form = $("#form");
+form.addEventListener("submit", e => e.preventDefault());
+form.addEventListener("input", e => {
+  const el = e.target;
+  if (el.dataset.k){
+    state[el.dataset.k] = el.value;
+    if (el.dataset.k === "job"){ el.classList.remove("invalid"); $("#err-job").hidden = true; }
+  } else if (el.dataset.mk){
+    state.materials[+el.dataset.mi][el.dataset.mk] = el.value;
+  } else if (el.dataset.kind){
+    const p = el.dataset.personH; state.hours[p] = state.hours[p] || {}; state.hours[p][el.dataset.kind] = el.value;
+    renderHourTotals();
+  }
+  save(); renderBar();
+});
+form.addEventListener("change", e => {
+  const el = e.target;
+  if (el.dataset.person){
+    const nm = el.dataset.person;
+    state.people = el.checked ? state.people.concat(nm) : state.people.filter(x => x !== nm);
+    const order = Array.from(new Set(STAFF.concat(state.people)));
+    state.people.sort((a,b) => order.indexOf(a) - order.indexOf(b));
+    $("#err-people").hidden = true;
+    save(); renderSummary(); renderHours(); renderBar();
+  }
+});
+form.addEventListener("click", e => {
+  if (e.target.id === "dd-close"){ $("#dd-people").open = false; return; }
+  if (e.target.id === "btn-samehours"){
+    const f = state.hours[state.people[0]] || {};
+    state.people.forEach(p => state.hours[p] = {work:f.work ?? "", travel:f.travel ?? ""});
+    save(); renderHours(); renderBar(); return;
+  }
+  const c = e.target.closest("[data-complete]");
+  if (c){ state.complete = state.complete === c.dataset.complete ? "" : c.dataset.complete; save(); renderScalars(); renderBar(); return; }
+  const del = e.target.closest("[data-mdel]");
+  if (del){ state.materials.splice(+del.dataset.mdel, 1); save(); renderMaterials(); renderBar(); }
+});
+document.addEventListener("click", e => { const dd = $("#dd-people"); if (dd.open && !dd.contains(e.target)) dd.open = false; });
+$("#btn-addmat").addEventListener("click", () => {
+  state.materials.push({item:"", qty:""}); save(); renderMaterials();
+  const el = $(`#m-${state.materials.length - 1}-item`); if (el) el.focus();
+});
+
+/* New form with an inline confirm */
+function resetForm(){ state = blank(); save(); clearSig(true); renderAll(); ["#pdf-status","#copy-status"].forEach(s => $(s).textContent = ""); window.scrollTo(0,0); }
+const newBtn = `<button type="button" id="btn-new" class="btn-small">New form</button>`;
+$("#new-wrap").addEventListener("click", e => {
+  const w = $("#new-wrap");
+  if (e.target.id === "btn-new"){
+    if (isEmpty(state)){ resetForm(); return; }
+    w.innerHTML = `<span class="confirm">Clear this form? <button type="button" id="btn-new-yes" class="btn-small btn-primary">Clear</button><button type="button" id="btn-new-no" class="btn-small">Keep</button></span>`;
+  } else if (e.target.id === "btn-new-yes"){ resetForm(); w.innerHTML = newBtn; }
+  else if (e.target.id === "btn-new-no"){ w.innerHTML = newBtn; }
+});
+
+/* ---------- signature ---------- */
+const canvas = $("#sig"), ctx = canvas.getContext("2d");
+let drawing = false;
+function sizeCanvas(){
+  const r = canvas.getBoundingClientRect(); const dpr = window.devicePixelRatio || 1;
+  if (!r.width) return;
+  canvas.width = Math.round(r.width*dpr); canvas.height = Math.round(r.height*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0); ctx.lineWidth = 2.4; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "#15211a";
+  loadSignature();
+}
+function loadSignature(){
+  const r = canvas.getBoundingClientRect();
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  $("#sig-hint").hidden = !!state.signature;
+  if (state.signature){ const img = new Image(); img.onload = () => ctx.drawImage(img,0,0,r.width,r.height); img.src = state.signature; }
+}
+function pos(e){ const r = canvas.getBoundingClientRect(); return {x:e.clientX - r.left, y:e.clientY - r.top}; }
+canvas.addEventListener("pointerdown", e => { drawing = true; canvas.setPointerCapture(e.pointerId); const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x+0.1,p.y+0.1); ctx.stroke(); $("#sig-hint").hidden = true; });
+canvas.addEventListener("pointermove", e => { if (!drawing) return; const p = pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); });
+const endDraw = () => { if (!drawing) return; drawing = false; state.signature = canvas.toDataURL("image/png"); $("#err-sig").hidden = true; save(); };
+canvas.addEventListener("pointerup", endDraw); canvas.addEventListener("pointercancel", endDraw);
+function clearSig(silent){ ctx.clearRect(0,0,canvas.width,canvas.height); $("#sig-hint").hidden = false; if (!silent){ state.signature = ""; save(); } }
+$("#btn-sigclear").addEventListener("click", () => clearSig(false));
+window.addEventListener("resize", () => { clearTimeout(sizeCanvas.t); sizeCanvas.t = setTimeout(sizeCanvas, 150); });
+
+/* ---------- validation ---------- */
+function validate(){
+  const missing = [];
+  if (!state.job.trim()){ $("#f-job").classList.add("invalid"); $("#err-job").hidden = false; missing.push("#f-job"); }
+  if (!state.people.length){ $("#err-people").hidden = false; missing.push("#dd-people"); }
+  if (!state.signature){ $("#err-sig").hidden = false; missing.push("#sig-wrap"); }
+  if (missing.length) $(missing[0]).scrollIntoView({block:"center"});
+  return !missing.length;
+}
+
+/* ---------- PDF ---------- */
+function buildPDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:"mm", format:"a4"});
+  const W = doc.internal.pageSize.getWidth(), M = 18;
+  const ink = [21,33,26];
+  const base = {theme:"grid", margin:{left:M,right:M}, styles:{font:"helvetica", fontSize:9.5, textColor:ink, lineColor:[214,212,205], lineWidth:0.2, cellPadding:2.2},
+    headStyles:{fillColor:[243,241,236], textColor:[90,90,85], fontStyle:"normal"}};
+  const wide = {columnStyles:{0:{cellWidth:62}}};
+  doc.setFont("times","normal"); doc.setFontSize(22); doc.setTextColor(...ink);
+  const titleLines = doc.splitTextToSize(sheetTitle(), W - 2*M);
+  doc.text(titleLines, M, 26);
+  let y = 26 + (titleLines.length-1)*9 + 7;
+  doc.setFont("helvetica","normal"); doc.setFontSize(10.5); doc.text("NZ Conservation Services Limited", M, y); y += 6;
+  const heading = txt => { if (y > 255){ doc.addPage(); y = 20; } doc.setFont("times","normal"); doc.setFontSize(15); doc.text(txt, M, y); y += 4; };
+  const table = opts => { doc.autoTable(Object.assign({}, base, {startY:y}, opts)); y = doc.lastAutoTable.finalY + 10; };
+
+  table(Object.assign({head:[["Field","Details"]], body:[
+    ["Date", dmy(state.date)], ["Job Name / Farm / Landowner / PCA", state.job.trim()],
+    ["People charge out is for", state.people.join(", ")], ["Description of tasks", state.tasks]]}, wide));
+
+  heading("Materials / Expendable Items");
+  const mats = matList();
+  table({head:[["Item","Quantity"]], body: mats.length ? mats.map(m => [m.item.trim(), m.qty.trim()]) : [["None used", ""]], columnStyles:{1:{cellWidth:45}}});
+
+  heading("Hours / Travel / KM");
+  const hrRows = state.people.map(p => [p, hrsTxt(hoursOf(p,"work")), hrsTxt(hoursOf(p,"travel"))]);
+  if (state.people.length > 1) hrRows.push([{content:"Total", styles:{fontStyle:"bold"}}, {content:hrsTxt(totalOf("work")), styles:{fontStyle:"bold"}}, {content:hrsTxt(totalOf("travel")), styles:{fontStyle:"bold"}}]);
+  table({head:[["Person","Hours worked","Hours travelled"]], body:hrRows, columnStyles:{0:{cellWidth:62}}});
+  y -= 6;
+  table(Object.assign({body:[["KM travelled", state.km === "" ? "" : n(state.km) + " km"]]}, wide));
+
+  heading("Job Wrap Up");
+  const sig = state.signature;
+  doc.autoTable(Object.assign({}, base, {startY:y, body:[
+      ["Is job complete and ready to charge?", state.complete],
+      ["Additional comments", state.comments],
+      ["Signature", {content:"", styles:{minCellHeight:26}}]], columnStyles:{0:{cellWidth:62}},
+    didDrawCell: d => {
+      if (sig && d.section === "body" && d.row.index === 2 && d.column.index === 1){
+        const r = canvas.width / canvas.height || 4; let h = d.cell.height - 3, w = h * r;
+        if (w > d.cell.width - 4){ w = d.cell.width - 4; h = w / r; }
+        try{ doc.addImage(sig, "PNG", d.cell.x + 2, d.cell.y + 1.5, w, h); }catch(err){}
+      }
+    }}));
+  const pages = doc.getNumberOfPages();
+  for (let i = 1; i <= pages; i++){
+    doc.setPage(i); doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(120,120,115);
+    doc.text(sheetTitle(), 10, 7);
+    doc.text(`Page ${i} of ${pages}`, W - 10, doc.internal.pageSize.getHeight() - 7, {align:"right"});
+  }
+  return doc;
+}
+const fileName = () => sheetTitle().replace(/[\\/:*?"<>|]+/g, "-") + ".pdf";
+
+function makeFile(st){
+  const bad = msg => { st.className = "status bad"; st.textContent = msg; return null; };
+  st.className = "status"; st.textContent = "";
+  if (!validate()) return bad("Some details are missing. Check the fields marked in red.");
+  if (!window.jspdf || !window.jspdf.jsPDF) return bad("The PDF maker didn't load. Reload the page and try again.");
+  try{ const blob = buildPDF().output("blob"); return new File([blob], fileName(), {type:"application/pdf"}); }
+  catch(err){ return bad("Couldn't make the PDF: " + err.message); }
+}
+function downloadFile(file){
+  const url = URL.createObjectURL(file);
+  const a = document.createElement("a"); a.href = url; a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+const canShareFiles = (() => { try{ return !!(navigator.canShare && navigator.canShare({files:[new File(["x"], "t.pdf", {type:"application/pdf"})]})); }catch(e){ return false; } })();
+if (!canShareFiles){
+  $("#share-hint").textContent = "This browser can't attach files to a share. Tapping Send PDF downloads the PDF and opens an email to Admin; attach the PDF from your Downloads.";
+}
+$("#btn-share").addEventListener("click", async () => {
+  const st = $("#share-status");
+  const file = makeFile(st); if (!file) return;
+  try{ navigator.clipboard && navigator.clipboard.writeText(SEND_TO).catch(() => {}); }catch(e){}
+  if (canShareFiles){
+    try{
+      await navigator.share({files:[file], title:sheetTitle(), text:"To: " + SEND_TO + "\n\n" + emailBody()});
+      st.textContent = "Shared. Check the email went to " + SEND_TO + ".";
+    }catch(err){
+      if (err && err.name === "AbortError"){ st.className = "status bad"; st.textContent = "Share cancelled."; }
+      else { downloadFile(file); st.className = "status bad"; st.textContent = "Sharing didn't work here, so the PDF was downloaded. Use Open email to Admin and attach it."; }
+    }
+  } else {
+    downloadFile(file);
+    st.textContent = "PDF downloaded. Opening an email to Admin; attach the PDF from your Downloads.";
+    setTimeout(() => { location.href = $("#btn-mail").href; }, 600);
+  }
+});
+$("#btn-pdf").addEventListener("click", () => {
+  const st = $("#pdf-status");
+  const file = makeFile(st); if (!file) return;
+  downloadFile(file); st.textContent = "Downloaded: " + file.name;
+});
+
+/* ---------- email ---------- */
+function emailBody(){
+  const L = [sheetTitle(), "",
+    "Date: " + dmy(state.date),
+    "Job: " + state.job.trim(),
+    "People: " + state.people.join(", ")];
+  if (state.tasks) L.push("Tasks: " + state.tasks);
+  const mats = matList();
+  if (mats.length) L.push("Materials: " + mats.map(m => m.item.trim() + (m.qty.trim() ? " - " + m.qty.trim() : "")).join(", "));
+  L.push("Hours:");
+  state.people.forEach(p => L.push(`  ${p}: ${hrsTxt(hoursOf(p,"work")) || "0 hours"} worked, ${hrsTxt(hoursOf(p,"travel")) || "0 hours"} travelled`));
+  if (state.people.length > 1) L.push(`  Total: ${hrsTxt(totalOf("work"))} worked, ${hrsTxt(totalOf("travel"))} travelled`);
+  if (state.km !== "") L.push("KM travelled: " + n(state.km) + " km");
+  L.push("Job complete and ready to charge: " + (state.complete || "Not stated"));
+  if (state.comments) L.push("Comments: " + state.comments);
+  L.push("", "Signed charge out sheet attached as PDF.");
+  return L.join("\n");
+}
+$("#btn-copy").addEventListener("click", () => {
+  const txt = "Subject: " + sheetTitle() + "\n\n" + emailBody(); const st = $("#copy-status");
+  const fallback = () => {
+    let ta = $("#copy-fallback");
+    if (!ta){ ta = document.createElement("textarea"); ta.id = "copy-fallback"; ta.style.cssText = "width:100%;min-height:200px"; st.after(ta); }
+    ta.value = txt; st.className = "status bad"; st.textContent = "Copying is blocked here. Select the text below and copy it."; ta.select();
+  };
+  try{ navigator.clipboard.writeText(txt).then(() => { st.className = "status"; st.textContent = "Copied. Paste it into a new email to " + SEND_TO + " and attach the PDF."; }, fallback); }catch(e){ fallback(); }
+});
+
+renderAll();
+requestAnimationFrame(sizeCanvas);
+if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+})();
+</script>
+</body>
+</html>
