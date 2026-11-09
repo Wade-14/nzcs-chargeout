@@ -1,6 +1,6 @@
 {
-  "name": "NZCS Staff Charge Out",
-  "short_name": "Charge Out",
+  "name": "NZCS Forms",
+  "short_name": "NZCS Forms",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
