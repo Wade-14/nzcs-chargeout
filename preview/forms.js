@@ -143,12 +143,23 @@ const FORMS = {
         { id:"rifles", type:"textarea", label:"Rifles and handhelds used" },
         { id:"arrived", type:"time", label:"Time arrived at block" },
         { id:"left", type:"time", label:"Time left block" },
-        { id:"activity", type:"choice", label:"Are you…", options:["Shooting","Counting"] },
+        { id:"activity", type:"choice", label:"Are you…", options:["Shooting","Counting","Filling bait stations"] },
       ]},
       { title: "Animals", fields: [
-        { id:"tally", type:"tally", label:"Animals seen and shot", columns:["Seen","Shot","Confirmed kills"],
-          rows:[{name:"Deer", cols:["Seen","Shot","Confirmed kills"]}, {name:"Possums", cols:["Seen","Shot"]}, {name:"Pigs", cols:["Seen","Shot"]}, {name:"Hares", cols:["Seen","Shot"]}, {name:"Goats", cols:["Seen","Shot"]}] },
-        { type:"notice", text:"Please remember to clean guns after every night shoot." },
+        { id:"tally", type:"tally", label:"Animals", columns:["Seen","Shot","Confirmed kills","Found under bait stations"],
+          // Bait station runs record what's found under the stations instead of what's shot.
+          columnsFor: v => v.activity === "Filling bait stations" ? ["Seen","Found under bait stations"] : ["Seen","Shot","Confirmed kills"],
+          rows:[
+            {name:"Deer", cols:["Seen","Shot","Confirmed kills"]},
+            {name:"Possums", cols:["Seen","Shot","Found under bait stations"]},
+            {name:"Pigs", cols:["Seen","Shot"]},
+            {name:"Hares", cols:["Seen","Shot","Found under bait stations"]},
+            {name:"Goats", cols:["Seen","Shot"]},
+            {name:"Rats", cols:["Seen","Shot","Found under bait stations"]},
+            {name:"Mice", cols:["Seen","Shot","Found under bait stations"]},
+          ] },
+        { id:"baitNotes", type:"textarea", label:"Bait station notes", placeholder:"Stations filled, bait used, anything to follow up", showIf:v => v.activity === "Filling bait stations" },
+        { type:"notice", text:"Please remember to clean guns after every night shoot.", showIf:v => v.activity !== "Filling bait stations" },
       ]},
       { title: "Wrap up", fields: [
         { id:"comments", type:"textarea", label:"Any comments about the job or problems encountered" },
@@ -182,6 +193,8 @@ const isStarted = key => {
   return Object.keys(v).some(k => k !== "when" && JSON.stringify(v[k]) !== JSON.stringify(b[k]));
 };
 
+const tallyCols = (f, v) => f.columnsFor ? f.columnsFor(v) : f.columns;
+
 /* ---------------- Mix rates (mL of concentrate in litres of water -> mL/L) ---------------- */
 const num = v => { const x = parseFloat(String(v).replace(",", ".")); return isFinite(x) ? x : NaN; };
 const trim = x => String(Math.round(x * 100) / 100);
@@ -212,9 +225,9 @@ function fieldHTML(form, f, v){
       return `<div class="field"><label for="${id}">${esc(f.label)}${req}</label><input type="time" id="${id}" data-g="${f.id}" value="${esc(v[f.id])}">${err}</div>`;
     case "tally": {
       const T = v[f.id] || {};
-      return `<div class="field"><span class="label">${esc(f.label)}</span><div class="tally-scroll"><table class="tally"><thead><tr><th></th>${f.columns.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>` +
-        f.rows.map((r,ri) => `<tr><th scope="row">${esc(r.name)}</th>${f.columns.map((c,ci) => r.cols.includes(c)
-          ? `<td><input type="number" inputmode="numeric" min="0" step="1" id="${id}-${ri}-${ci}" data-gt="${f.id}" data-key="${esc(r.name + "|" + c)}" value="${esc(T[r.name + "|" + c] ?? "")}" placeholder="0" aria-label="${esc(r.name + " " + c.toLowerCase())}"></td>`
+      return `<div class="field"><span class="label">${esc(f.label)}</span><div class="tally-scroll"><table class="tally"><thead><tr><th></th>${tallyCols(f, v).map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>` +
+        f.rows.map((r,ri) => `<tr><th scope="row">${esc(r.name)}</th>${tallyCols(f, v).map((c,ci) => r.cols.includes(c)
+          ? `<td><input type="number" inputmode="numeric" min="0" step="1" id="${id}-${ri}-${f.columns.indexOf(c)}" data-gt="${f.id}" data-key="${esc(r.name + "|" + c)}" value="${esc(T[r.name + "|" + c] ?? "")}" placeholder="0" aria-label="${esc(r.name + " " + c.toLowerCase())}"></td>`
           : `<td class="na">–</td>`).join("")}</tr>`).join("") + `</tbody></table></div></div>`;
     }
     case "datetime":
@@ -292,7 +305,7 @@ function sendHTML(form){
     <div class="btns"><span id="g-clear-wrap"><button type="button" class="btn-small btn-ghost" id="g-clear">Clear form and start again</button></span></div></div>`;
 }
 // Re-draw only when a question appears or disappears, so typing isn't interrupted.
-const shapeOf = () => FORMS[current].sections.map(s => s.fields.map(f => !f.showIf || f.showIf(values()) ? 1 : 0).join("")).join("|");
+const shapeOf = () => FORMS[current].sections.map(s => s.fields.map(f => (!f.showIf || f.showIf(values()) ? 1 : 0) + (f.type === "tally" ? tallyCols(f, values()).join(",") : "")).join("")).join("|");
 function rerenderIfShapeChanged(){
   if (shapeOf() !== rerenderIfShapeChanged.last){ const y = window.scrollY; render(); window.scrollTo(0, y); }
 }
@@ -481,7 +494,7 @@ function validate(){
 function answerText(f, v){
   const a = v[f.id];
   if (f.type === "datetime") return dmyTime(a);
-  if (f.type === "tally") return f.rows.map(r => r.name + ": " + r.cols.map(c => `${c.toLowerCase()} ${a[r.name + "|" + c] || 0}`).join(", ")).join("\n");
+  if (f.type === "tally") return f.rows.map(r => r.name + ": " + r.cols.filter(c => tallyCols(f, v).includes(c)).map(c => `${c.toLowerCase()} ${a[r.name + "|" + c] || 0}`).join(", ")).join("\n");
   if (f.type === "mixes") return usedMixes(a).map(mixLine).join("\n");
   if (f.type === "location") return [a.address, a.lat != null ? `GPS ${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}` : ""].filter(Boolean).join("\n");
   if (Array.isArray(a)) return a.join(", ");
@@ -515,8 +528,9 @@ function buildPDF(){
     // Tally grids (e.g. animals seen / shot) come first in their section
     s.fields.filter(f => f.type === "tally").forEach(f => {
       const T = v[f.id]; head();
-      doc.autoTable(Object.assign({}, base, {startY:y, head:[["", ...f.columns]],
-        body:f.rows.map(r => [r.name, ...f.columns.map(c => r.cols.includes(c) ? String(T[r.name + "|" + c] || 0) : "–")]),
+      const cols = tallyCols(f, v), shown = f.rows.filter(r => cols.some(c => r.cols.includes(c)));
+      doc.autoTable(Object.assign({}, base, {startY:y, head:[["", ...cols]],
+        body:shown.map(r => [r.name, ...cols.map(c => r.cols.includes(c) ? String(T[r.name + "|" + c] || 0) : "–")]),
         columnStyles:{0:{cellWidth:50, fontStyle:"bold", halign:"left"}}, headStyles:Object.assign({}, base.headStyles, {halign:"center"}), bodyStyles:{halign:"center"}}));
       y = doc.lastAutoTable.finalY + (rows.length ? 4 : 10);
     });
