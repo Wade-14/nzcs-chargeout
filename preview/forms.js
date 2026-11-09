@@ -51,7 +51,7 @@ const FORMS = {
       ]},
       { title: "Today's information", fields: [
         { id:"weather", type:"multi", label:"Weather for today", options:["Sunny","Windy","Rain","Stormy","Snow","Overcast","Foggy","Dark (working at night)","Morning frost"] },
-        { id:"temp", type:"choice", label:"Temperature for the day", options:["Cold","Cool","Mild","Warm","Hot"] },
+        { id:"temp", type:"choice", label:"Temperature for the day", options:["Cold","Warm","Hot"] },
         { id:"activities", type:"multi", label:"Activities for the day", options:["Audits","Bait stations","Chemical use","Cut and Paste","Drill and fill","Handling Firearms","Landscaping","Making Feratox","Monitoring","Planting","Powertools","Regen thinning","Seed Collecting","Setback marking","Shooting","Signage checks","Signups","Spraying","Toxin use","Trapping","Using handtools","Weed control","Wilding pine control","Other"] },
         { id:"activitiesOther", type:"textarea", label:"Describe other activities", showIf:v => (v.activities||[]).includes("Other") },
       ]},
@@ -137,7 +137,8 @@ function fieldHTML(form, f, v){
       const L = v[f.id] || {};
       return `<div class="field"><label for="${id}">${esc(f.label)}</label>
         <div class="loc-row"><input type="text" id="${id}" data-gl="${f.id}" autocomplete="off" value="${esc(L.address)}" placeholder="Address or place name"><button type="button" class="btn-small" data-locate="${f.id}">Use my location</button></div>
-        <span class="hint" id="${id}-gps">${L.lat != null ? `GPS ${L.lat.toFixed(5)}, ${L.lng.toFixed(5)}` : "Tap Use my location to fill this in from your phone's GPS."}</span></div>`;
+        <span class="hint" id="${id}-gps">${L.lat != null ? `GPS ${L.lat.toFixed(5)}, ${L.lng.toFixed(5)}` : "Tap Use my location to fill this in from your phone's GPS."}</span>
+        <img class="loc-map" id="${id}-map" alt="Map of the meeting location" ${L.map ? `src="${L.map}"` : "hidden"}></div>`;
     }
     case "signatures": {
       const list = v[f.id] || [];
@@ -277,13 +278,52 @@ function bind(){
 }
 
 /* ---------------- Location ---------------- */
+// Draws a small map (OpenStreetMap tiles) centred on the GPS point, with a pin. Needs signal; returns null if it can't.
+function makeMap(lat, lng){
+  const z = 16, Wpx = 640, Hpx = 360, T = 256;
+  const n = Math.pow(2, z), rad = lat * Math.PI / 180;
+  const cx = (lng + 180) / 360 * n * T;
+  const cy = (1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2 * n * T;
+  const left = cx - Wpx / 2, top = cy - Hpx / 2;
+  const tiles = [];
+  for (let tx = Math.floor(left / T); tx <= Math.floor((left + Wpx) / T); tx++)
+    for (let ty = Math.floor(top / T); ty <= Math.floor((top + Hpx) / T); ty++) tiles.push([tx, ty]);
+  const c = document.createElement("canvas"); c.width = Wpx; c.height = Hpx;
+  const ctx = c.getContext("2d"); ctx.fillStyle = "#e8ece6"; ctx.fillRect(0, 0, Wpx, Hpx);
+  const load = ([tx, ty]) => new Promise(res => {
+    const img = new Image(); img.crossOrigin = "anonymous";
+    const t = setTimeout(() => res(false), 8000);
+    img.onload = () => { clearTimeout(t); ctx.drawImage(img, tx * T - left, ty * T - top); res(true); };
+    img.onerror = () => { clearTimeout(t); res(false); };
+    img.src = `https://tile.openstreetmap.org/${z}/${((tx % n) + n) % n}/${ty}.png`;
+  });
+  return Promise.all(tiles.map(load)).then(ok => {
+    if (!ok.some(Boolean)) return null;
+    // pin
+    const px = Wpx / 2, py = Hpx / 2;
+    ctx.fillStyle = "#e0692a"; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.bezierCurveTo(px - 16, py - 22, px - 14, py - 40, px, py - 40); ctx.bezierCurveTo(px + 14, py - 40, px + 16, py - 22, px, py); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(px, py - 27, 5, 0, Math.PI * 2); ctx.fill();
+    // attribution (required by OpenStreetMap)
+    ctx.font = "12px sans-serif"; const txt = "© OpenStreetMap contributors"; const tw = ctx.measureText(txt).width;
+    ctx.fillStyle = "rgba(255,255,255,.85)"; ctx.fillRect(Wpx - tw - 12, Hpx - 20, tw + 12, 20);
+    ctx.fillStyle = "#333"; ctx.fillText(txt, Wpx - tw - 6, Hpx - 6);
+    try{ return c.toDataURL("image/jpeg", 0.82); }catch(e){ return null; }
+  });
+}
 function locate(fieldId, btn){
   const gps = $(`#g-${fieldId}-gps`), v = values();
   if (!navigator.geolocation){ gps.textContent = "This phone can't share its location. Type the address instead."; return; }
   btn.disabled = true; gps.textContent = "Finding your location…";
   navigator.geolocation.getCurrentPosition(async pos => {
-    const L = v[fieldId]; L.lat = pos.coords.latitude; L.lng = pos.coords.longitude;
-    gps.textContent = `GPS ${L.lat.toFixed(5)}, ${L.lng.toFixed(5)}`;
+    const L = v[fieldId]; L.lat = pos.coords.latitude; L.lng = pos.coords.longitude; L.map = null;
+    gps.textContent = `GPS ${L.lat.toFixed(5)}, ${L.lng.toFixed(5)} · drawing map…`;
+    makeMap(L.lat, L.lng).then(img => {
+      if (v !== values()) return;
+      L.map = img; const m = $(`#g-${fieldId}-map`);
+      gps.textContent = `GPS ${L.lat.toFixed(5)}, ${L.lng.toFixed(5)}` + (img ? "" : " · no map (needs signal)");
+      if (m && img){ m.src = img; m.hidden = false; }
+    });
     try{
       const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&lat=${L.lat}&lon=${L.lng}`, {headers:{"Accept-Language":"en-NZ"}});
       const d = await r.json();
@@ -348,6 +388,12 @@ function buildPDF(){
         didDrawCell: c => { if (c.section === "body" && c.column.index === 1 && /^GPS /m.test(String(c.cell.raw || "")) && links.length){ doc.link(c.cell.x, c.cell.y, c.cell.width, c.cell.height, {url:links[0]}); } }}));
       y = doc.lastAutoTable.finalY + 10;
     }
+    // Map picture for any location in this section
+    s.fields.filter(f => f.type === "location" && v[f.id].map).forEach(f => {
+      const mw = 120, mh = mw * 360 / 640;
+      if (y + mh > H - 16){ doc.addPage(); y = 20; }
+      try{ doc.addImage(v[f.id].map, "JPEG", M, y - 4, mw, mh); if (links[0]) doc.link(M, y - 4, mw, mh, {url:links[0]}); y += mh + 8; }catch(e){}
+    });
     // Signatures
     s.fields.filter(f => f.type === "signatures").forEach(f => {
       const sigs = v[f.id].filter(x => x.sig);
