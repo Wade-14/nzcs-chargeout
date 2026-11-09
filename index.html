@@ -119,6 +119,14 @@ table.hrs tfoot td{font-weight:700;padding-top:10px;border-top:1px solid var(--l
 .done-box b{font-size:16px}
 .done-box .btns{display:flex;flex-wrap:wrap;gap:8px}
 .confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px}
+.install{background:var(--surface);border:1px solid var(--forest);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;display:grid;gap:10px}
+.install-top{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.install-top img{width:40px;height:40px;border-radius:9px;flex:none}
+.install-top .txt{display:grid;min-width:0;flex:1 1 200px}
+.install-top .btns{display:flex;gap:6px}
+@media (max-width:600px){.install-top .btns{flex:1 1 100%}.install-top .btns .btn-primary{flex:1}}
+.install ol{margin:0;padding-left:22px;display:grid;gap:6px;font-size:15px}
+.install .ico{display:inline-block;vertical-align:-3px;width:18px;height:18px}
 
 /* Jobs panel */
 aside.jobs{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:none}
@@ -193,6 +201,15 @@ body:not(.locked) .gate{display:none}
         <span id="new-wrap"><button type="button" id="btn-new" class="btn-small">New form</button></span>
       </div>
     </header>
+
+    <div class="install" id="install-banner" hidden>
+      <div class="install-top">
+        <img src="icon-192.png" alt="">
+        <div class="txt"><b>Put the app on your home screen</b><span class="hint">Opens full screen like any app, and works with no signal.</span></div>
+        <div class="btns"><button type="button" class="btn-primary btn-small" id="btn-install">Install app</button><button type="button" class="btn-ghost btn-small" id="btn-install-x">Not now</button></div>
+      </div>
+      <div id="install-help" hidden></div>
+    </div>
 
     <div class="mode-banner" id="mode-banner" hidden>
       <span id="mode-text"></span>
@@ -810,6 +827,41 @@ function copyEmail(){
   };
   try{ navigator.clipboard.writeText(txt).then(() => sendStatus("Copied. Paste it into a new email to " + SEND_TO + " and attach the PDF."), fallback); }catch(e){ fallback(); }
 }
+
+/* ---------- install on home screen ---------- */
+// Android browsers offer a one-tap install; iPhones need the Safari Share menu, so we show the steps.
+const INSTALL_KEY = "nzcs.chargeout.installHidden";
+const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const ua = navigator.userAgent;
+const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const isIOSSafari = isIOS && !/CriOS|FxiOS|EdgiOS|OPiOS|GSA/.test(ua);
+const isMobile = isIOS || /Android/.test(ua);
+let installEvent = null;
+function installHiddenRecently(){ const t = store.get(INSTALL_KEY, 0); return t && Date.now() - t < 7*86400000; }
+function showInstall(){ if (!standalone && !installHiddenRecently()) $("#install-banner").hidden = false; }
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvent = e; showInstall(); });
+window.addEventListener("appinstalled", () => { installEvent = null; $("#install-banner").hidden = true; });
+if (!standalone && isMobile) showInstall();
+const shareIcon = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>`;
+$("#btn-install").addEventListener("click", async () => {
+  const help = $("#install-help");
+  if (installEvent){
+    installEvent.prompt();
+    const choice = await installEvent.userChoice.catch(() => null);
+    installEvent = null;
+    if (choice && choice.outcome === "accepted") $("#install-banner").hidden = true;
+    return;
+  }
+  if (isIOSSafari){
+    help.innerHTML = `<ol><li>Tap the <b>Share</b> button ${shareIcon} at the bottom of Safari (top right on iPad).</li><li>Scroll down and tap <b>Add to Home Screen</b>.</li><li>Tap <b>Add</b>. The NZCS icon appears on your home screen.</li></ol>`;
+  } else if (isIOS){
+    help.innerHTML = `<ol><li>On iPhone the app can only be installed from <b>Safari</b>.</li><li>Copy this page's address, open <b>Safari</b> and paste it in.</li><li>Then tap <b>Share</b> ${shareIcon} and <b>Add to Home Screen</b>.</li></ol>`;
+  } else {
+    help.innerHTML = `<ol><li>Open your browser's menu (<b>⋮</b> in Chrome, <b>☰</b> in Samsung Internet).</li><li>Tap <b>Install app</b> or <b>Add to Home screen</b>.</li><li>Tap <b>Install</b> or <b>Add</b>.</li></ol>`;
+  }
+  help.hidden = false;
+});
+$("#btn-install-x").addEventListener("click", () => { store.set(INSTALL_KEY, Date.now()); $("#install-banner").hidden = true; });
 
 /* ---------- start ---------- */
 finished = store.get("nzcs.chargeout.finished", null);
