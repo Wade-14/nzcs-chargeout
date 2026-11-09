@@ -80,6 +80,40 @@ const FORMS = {
       ]},
     ],
   },
+  spray: {
+    hash: "#spray-diary",
+    title: "Spray Diary",
+    pdfTitle: "NZCS Spray Diary",
+    blurb: "Agrichemical application record: chemicals, rates, equipment, PPE and weather.",
+    sendTo: ["team@nzconservation.nz", "operations@nzconservation.nz"],
+    sendToLabel: "Wade and Gareth",
+    icon: '<path d="M9 3h5v4H9z"/><path d="M8 7h7l1 3v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-9z"/><path d="M14 4h3l2-1M17 4l2 1"/>',
+    titleFrom: v => `${v.job || "Job"} ${dmy(v.when)}`,
+    sections: [
+      { title: "Job", fields: [
+        { id:"when", type:"datetime", label:"Date & time", required:true },
+        { id:"job", type:"text", label:"Property name / Job name", placeholder:"Farm name, landowner or location", required:true },
+        { id:"applicators", type:"people", label:"Applicator's name", required:true },
+        { id:"location", type:"location", label:"Location" },
+        { id:"pests", type:"textarea", label:"Target pests", placeholder:"Weeds or pests being sprayed" },
+      ]},
+      { title: "Equipment and PPE", fields: [
+        { id:"equipment", type:"multi", label:"Equipment used", options:["Knapsack 1","Knapsack 2","Knapsack 3","Knapsack 4","Knapsack 5","Knapsack 6","Knapsack 7","Knapsack 8","Knapsack (solo) 1","Knapsack (solo) 2","Knapsack (solo) 3","Quadbike boom sprayer","Quadbike hand gun","Drill and fill","Cut and paste","LUV boom sprayer","LUV hand gun","Other"] },
+        { id:"equipmentOther", type:"textarea", label:"Other equipment used", showIf:v => (v.equipment||[]).includes("Other") },
+        { id:"ppe", type:"multi", label:"PPE worn", options:["Gloves","Boots","Cotton overalls","Capes","Eye protection","Respirator","Leggings","Hat"] },
+      ]},
+      { title: "Chemicals and application", fields: [
+        { id:"chemicals", type:"textarea", label:"Agrichemicals used and rate", placeholder:"Product name and rate for each chemical" },
+        { id:"additives", type:"textarea", label:"Additives used and rate", placeholder:"Product name and rate for each additive" },
+        { id:"volume", type:"text", label:"Total volume applied", placeholder:"e.g. litres of mix applied" },
+        { id:"weather", type:"textarea", label:"Weather (wind speed and direction, temperature, humidity)" },
+        { id:"notes", type:"textarea", label:"Notes (sensitive areas, withholding, signage, notification, disposal)" },
+      ]},
+      { title: "Sign off", fields: [
+        { id:"signatures", type:"signatures", label:"Signature", required:true },
+      ]},
+    ],
+  },
 };
 window.NZCS_ONEOFF = FORMS;
 
