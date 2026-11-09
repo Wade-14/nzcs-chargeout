@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="en-NZ">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>NZCS Charge Out</title>
+<meta name="theme-color" content="#1d5a40">
+<meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: the form is one phone-first column. Jobs in progress open as a panel over it on phones and sit as a sidebar on wide screens. A sticky bar at the bottom keeps totals and Finish in reach. */
+:root{
+  --bg:#eef2ee; --surface:#ffffff; --sunken:#f5f7f4; --line:#d3dbd3; --ink:#15211a; --muted:#56655b;
+  --forest:#1d5a40; --forest-ink:#ffffff; --forest-soft:#dcebe2; --hivis:#e0692a;
+  --amber:#8a5200; --amber-soft:#fbecd3; --danger:#b3261e; --danger-soft:#fbe4e2; --pad:#ffffff;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#101713; --surface:#18221c; --sunken:#131c17; --line:#2c3a31; --ink:#e6eee8; --muted:#9aaba0;
+  --forest:#5fb88c; --forest-ink:#0c1a12; --forest-soft:#1f3a2c; --hivis:#f08a4f;
+  --amber:#f2b45a; --amber-soft:#3a2c14; --danger:#ff8a80; --danger-soft:#3a1a18; --pad:#f4f6f2; color-scheme:dark}}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{color-scheme:light}
+:root{padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;-webkit-text-size-adjust:100%;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45}
+.layout{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 120px;display:grid;gap:20px;grid-template-columns:minmax(0,1fr)}
+.main{min-width:0;max-width:720px;width:100%;justify-self:center}
+@media (min-width:1040px){
+  .layout{grid-template-columns:360px minmax(0,1fr)}
+  .main{justify-self:start}
+  aside.jobs{display:block!important;position:sticky;top:20px;align-self:start;max-height:calc(100vh - 40px);overflow:auto}
+  #btn-jobs{display:none}
+  .jobs-close{display:none}
+}
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-bottom:14px;border-bottom:3px solid var(--forest);margin-bottom:18px}
+.brand small{display:block;font-family:var(--f-display);text-transform:uppercase;letter-spacing:.12em;font-size:13px;color:var(--muted);font-weight:600}
+.brand h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:34px;line-height:1;letter-spacing:.01em}
+.top-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.role{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--forest);background:var(--forest-soft);border-radius:999px;padding:4px 10px}
+
+section.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:14px;display:grid;gap:14px}
+section.card>h2{margin:0;font-family:var(--f-display);font-weight:600;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--forest);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.row{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+.row>*{min-width:0}
+@media (max-width:540px){.row{grid-template-columns:1fr}}
+.field{display:grid;gap:6px;min-width:0}
+label,.label{font-weight:600;font-size:14px}
+.hint{font-size:13px;color:var(--muted);font-weight:400}
+input[type=password],input[type=text],input[type=date],input[type=number],textarea,select{
+  width:100%;font:inherit;color:var(--ink);background:var(--sunken);border:1px solid var(--line);border-radius:8px;padding:11px 12px;min-height:46px}
+textarea{min-height:84px;resize:vertical}
+input[readonly]{background:var(--forest-soft);border-color:transparent;font-weight:600}
+input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var(--hivis);outline-offset:1px}
+.invalid{border-color:var(--danger)!important}
+.err{color:var(--danger);font-size:13px;font-weight:600}
+
+button,.btn{font:inherit;font-weight:600;font-size:15px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 14px;min-height:44px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none}
+button:hover,.btn:hover{border-color:var(--forest)}
+button:disabled{opacity:.55;cursor:default}
+.btn-primary{background:var(--forest);border-color:var(--forest);color:var(--forest-ink)}
+.btn-hivis{background:var(--hivis);border-color:var(--hivis);color:#1a0d05}
+.btn-danger{background:transparent;border-color:var(--danger);color:var(--danger)}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--forest);padding-inline:8px}
+.btn-small{min-height:36px;padding:6px 10px;font-size:14px}
+.icon-btn{min-height:44px;width:44px;padding:0;font-size:22px;line-height:1;color:var(--muted)}
+.count{background:var(--hivis);color:#1a0d05;border-radius:999px;font-size:12px;font-weight:700;padding:1px 7px;min-width:22px;text-align:center}
+
+.mode-banner{background:var(--amber-soft);color:var(--amber);border-radius:var(--r);padding:10px 14px;display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:14px;font-weight:600;font-size:15px}
+.mode-banner span{min-width:0}
+
+details.dd{position:relative}
+details.dd summary{list-style:none;cursor:pointer;background:var(--sunken);border:1px solid var(--line);border-radius:8px;padding:11px 40px 11px 12px;min-height:46px;position:relative}
+details.dd summary::-webkit-details-marker{display:none}
+details.dd summary::after{content:"";position:absolute;right:16px;top:50%;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-70%) rotate(45deg)}
+details.dd[open] summary::after{transform:translateY(-30%) rotate(-135deg)}
+details.dd summary .ph{color:var(--muted)}
+.dd-list{margin-top:6px;background:var(--surface);border:1px solid var(--line);border-radius:8px;max-height:340px;overflow:auto;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.dd-list label{display:flex;align-items:center;gap:12px;padding:12px 14px;font-weight:500;font-size:16px;cursor:pointer;border-bottom:1px solid var(--line)}
+.dd-list input{width:22px;height:22px;accent-color:var(--forest);flex:none}
+.dd-done{display:flex;justify-content:flex-end;padding:8px;position:sticky;bottom:0;background:var(--surface)}
+
+table.hrs{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+table.hrs th{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.08em;font-size:13px;color:var(--muted);text-align:left;font-weight:600;padding:4px 6px}
+table.hrs td{padding:5px 6px;vertical-align:middle}
+table.hrs td.name{font-weight:600;overflow-wrap:anywhere}
+table.hrs input{max-width:110px;min-height:44px}
+table.hrs tfoot td{font-weight:700;padding-top:10px;border-top:1px solid var(--line)}
+
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;justify-self:start}
+.seg button{border:0;border-radius:0;min-width:96px;background:var(--sunken)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--forest);color:var(--forest-ink)}
+
+.mats{display:grid;gap:10px}
+.mat-row{display:grid;grid-template-columns:minmax(0,1fr) 140px 44px;gap:8px;align-items:end}
+@media (max-width:540px){.mat-row{grid-template-columns:minmax(0,1fr) 110px 44px}}
+.mat-row .field label{font-size:12px;color:var(--muted);font-weight:500}
+
+.sig-wrap{position:relative;background:var(--pad);border:1px dashed var(--muted);border-radius:8px;height:170px;touch-action:none}
+.sig-wrap canvas{width:100%;height:100%;display:block;cursor:crosshair}
+.sig-wrap .sig-hint{position:absolute;inset:auto 0 12px;text-align:center;color:#8a958e;font-size:14px;pointer-events:none}
+.sig-line{position:absolute;left:24px;right:24px;bottom:40px;border-bottom:1px solid #c5ccc6;pointer-events:none}
+
+.send{display:grid;gap:12px}
+.send .btns{display:flex;flex-wrap:wrap;gap:8px}
+.addr{font-family:ui-monospace,Menlo,monospace;font-size:14px;background:var(--sunken);border:1px solid var(--line);border-radius:6px;padding:4px 8px;user-select:all;word-break:break-all}
+.status{font-size:14px;color:var(--forest);font-weight:600;min-height:1.2em}
+.status.bad{color:var(--danger)}
+.done-box{background:var(--forest-soft);border-radius:var(--r);padding:14px;display:grid;gap:10px}
+.done-box b{font-size:16px}
+.done-box .btns{display:flex;flex-wrap:wrap;gap:8px}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px}
+
+/* Jobs panel */
+aside.jobs{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:none}
+@media (max-width:1039px){
+  aside.jobs.open{display:block;position:fixed;inset:0;z-index:40;border-radius:0;border:0;overflow:auto;
+    padding-top:calc(16px + env(safe-area-inset-top,0px));padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));
+    padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+}
+.jobs-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
+.jobs-head h2{margin:0;font-family:var(--f-display);font-size:24px;font-weight:700}
+.jobs-list{display:grid;gap:10px}
+.job-card{width:100%;text-align:left;display:grid;gap:4px;justify-content:stretch;align-items:start;background:var(--sunken);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-weight:400}
+.job-card .jn{font-weight:600;font-size:16px}
+.tag{justify-self:start;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:4px;padding:2px 6px;background:var(--amber-soft);color:var(--amber)}
+.meta{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.day-card{background:var(--sunken);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:8px}
+.day-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.day-head b{font-size:15px}
+.day-card table{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
+.day-card th{color:var(--muted);font-weight:500;font-size:12px;text-align:left;padding:2px 0}
+.day-card td{padding:2px 0}
+.day-card td+td,.day-card th+th{text-align:right}
+.day-card img{max-width:180px;height:auto;background:#fff;border-radius:4px}
+.job-actions{display:grid;gap:8px;margin-top:12px}
+.empty{color:var(--muted);font-size:15px;padding:8px 0}
+
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(0,0,0,.08);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+.bar-in{max-width:720px;margin:0 auto;display:flex;gap:12px;align-items:center;justify-content:space-between}
+.bar-sum{font-size:14px;color:var(--muted);min-width:0;font-variant-numeric:tabular-nums}
+.bar-sum b{color:var(--ink)}
+
+.gate{min-height:100vh;display:grid;place-items:center;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px}
+.gate-card{width:100%;max-width:380px;background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--forest);border-radius:var(--r);padding:24px;display:grid;gap:14px}
+.gate-card h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:30px;line-height:1}
+.gate-card small{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.12em;font-size:13px;color:var(--muted);font-weight:600}
+.gate-card input{font-size:18px;letter-spacing:.06em}
+body.locked .layout,body.locked .bar{display:none}
+body:not(.locked) .gate{display:none}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+</style>
+</head>
+<body class="locked">
+
+<div class="gate" id="gate">
+  <form class="gate-card" id="gate-form" autocomplete="off">
+    <div><small>NZ Conservation Services Ltd</small><h1>Staff Charge Out</h1></div>
+    <div class="field">
+      <label for="gate-code">Enter the share code</label>
+      <input type="password" id="gate-code" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Share code">
+      <span class="hint">Ask the office if you don't have it. You only need to enter it once on this phone.</span>
+    </div>
+    <button type="submit" class="btn-primary" id="gate-go">Open form</button>
+    <span class="err" id="gate-err" role="alert" hidden></span>
+  </form>
+</div>
+
+<div class="layout">
+  <aside class="jobs" id="jobs" aria-label="Jobs in progress">
+    <div id="jobs-host"></div>
+  </aside>
+
+  <div class="main">
+    <header class="top">
+      <div class="brand">
+        <small>NZ Conservation Services Ltd</small>
+        <h1>Staff Charge Out</h1>
+      </div>
+      <div class="top-actions">
+        <span class="role" id="role-pill" hidden>Manager</span>
+        <button type="button" id="btn-jobs" class="btn-small">Jobs in progress <span class="count" id="jobs-count">0</span></button>
+        <span id="new-wrap"><button type="button" id="btn-new" class="btn-small">New form</button></span>
+      </div>
+    </header>
+
+    <div class="mode-banner" id="mode-banner" hidden>
+      <span id="mode-text"></span>
+      <button type="button" class="btn-small" id="btn-cancel-mode">Cancel</button>
+    </div>
+
+    <form id="form" autocomplete="off" novalidate>
+      <section class="card">
+        <h2>Job</h2>
+        <div class="field">
+          <label for="f-date">Date</label>
+          <input type="date" id="f-date" data-k="date">
+        </div>
+        <div class="field">
+          <label for="f-job">Job name / Farm / Landowner / PCA</label>
+          <input type="text" id="f-job" data-k="job" autocomplete="off" placeholder="e.g. Willowbank Farm - Tony Miles">
+          <span class="err" id="err-job" hidden>Type the job name.</span>
+        </div>
+        <div class="field">
+          <span class="label" id="lbl-people">People on site</span>
+          <details class="dd" id="dd-people">
+            <summary id="dd-summary" aria-labelledby="lbl-people"></summary>
+            <div class="dd-list" id="dd-list"></div>
+          </details>
+          <span class="err" id="err-people" hidden>Tick at least one person.</span>
+        </div>
+        <div class="field">
+          <label for="f-tasks">Description of tasks</label>
+          <textarea id="f-tasks" data-k="tasks" placeholder="e.g. Release spraying natives"></textarea>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Hours &amp; travel</h2>
+        <div id="hours-host"></div>
+        <div class="field">
+          <label for="f-km">KM travelled</label>
+          <input type="number" id="f-km" data-k="km" inputmode="decimal" min="0" step="1" placeholder="0">
+          <span class="hint">Total for all vehicles</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Materials used <button type="button" id="btn-addmat" class="btn-small btn-ghost">+ Add material</button></h2>
+        <div id="mat-host" class="mats"></div>
+      </section>
+
+      <section class="card">
+        <h2>Job wrap up</h2>
+        <div class="field" id="complete-field">
+          <span class="label">Is job complete and ready to charge?</span>
+          <div class="seg" role="group" aria-label="Job complete">
+            <button type="button" id="f-complete-yes" data-complete="Yes" aria-pressed="false">Yes</button>
+            <button type="button" id="f-complete-no" data-complete="No" aria-pressed="false">No</button>
+          </div>
+          <span class="hint">No saves it to Jobs in progress so the next crew can add their day.</span>
+          <span class="err" id="err-complete" hidden>Choose Yes or No.</span>
+        </div>
+        <div class="field">
+          <label for="f-comments">Additional comments</label>
+          <textarea id="f-comments" data-k="comments" placeholder="e.g. Left early due to wind"></textarea>
+        </div>
+        <div class="field">
+          <label for="f-signedby">Filled in by</label>
+          <select id="f-signedby" data-k="signedBy"></select>
+          <span class="err" id="err-signedby" hidden>Pick your name.</span>
+        </div>
+        <div class="field">
+          <span class="label" style="display:flex;justify-content:space-between;align-items:center">Signature <button type="button" id="btn-sigclear" class="btn-small btn-ghost">Clear</button></span>
+          <div class="sig-wrap" id="sig-wrap"><div class="sig-line"></div><canvas id="sig"></canvas><div class="sig-hint" id="sig-hint">Sign here with your finger</div></div>
+          <span class="err" id="err-sig" hidden>Sign the form before saving.</span>
+        </div>
+      </section>
+
+      <section class="card" id="finish">
+        <h2>Save &amp; send</h2>
+        <div class="send" id="send-host"></div>
+      </section>
+    </form>
+  </div>
+</div>
+
+<div class="bar">
+  <div class="bar-in">
+    <div class="bar-sum" id="bar-sum"></div>
+    <a href="#finish" class="btn btn-hivis" id="btn-finish">Finish</a>
+  </div>
+</div>
+
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="vendor/jspdf.plugin.autotable.min.js"></script>
+<script>
+(function(){
+"use strict";
+/* ---- Who appears in the People dropdown, where forms go, and the storage service ---- */
+const STAFF = ["Gareth Coyle", "Wade McSoriley", "Nigel Spencer", "Dave Spedding", "Dave Walker", "Rob Grant", "Jonathan Poll", "Ruby Young", "Brandon Muller", "Tad Schultz"];
+const SEND_TO = "Admin@nzconservation.nz";
+const API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? "http://localhost:8787" : "https://nzcs-chargeout-api.royal-dawn-9e17.workers.dev";
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+const todayISO = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+const dmy = iso => iso ? iso.split("-").reverse().join("-") : "";
+const n = v => { const x = parseFloat(v); return isFinite(x) ? x : 0; };
+const fmt = v => String(Math.round(n(v)*100)/100);
+const hrsTxt = v => v === "" || v == null ? "" : fmt(v) + (n(v) === 1 ? " hour" : " hours");
+const plural = (k, w) => k + " " + w + (k === 1 ? "" : "s");
+
+/* ---------- access (share code checked by the storage service) ---------- */
+const AUTH_KEY = "nzcs.chargeout.auth";
+let auth = store.get(AUTH_KEY, null);   // {code, role}
+async function api(method, path, body){
+  let res;
+  try{
+    res = await fetch(API + path, {method, headers:{"Content-Type":"application/json","X-Access-Code":auth ? auth.code : ""}, body: body ? JSON.stringify(body) : undefined});
+  }catch(e){ const err = new Error("No connection. Check your signal and try again."); err.offline = true; throw err; }
+  let data = {}; try{ data = await res.json(); }catch(e){}
+  if (res.status === 401){ lock("Your share code has changed. Enter the current code."); }
+  if (!res.ok) throw new Error(data.error || "Something went wrong (" + res.status + ").");
+  return data;
+}
+function lock(msg){ store.del(AUTH_KEY); auth = null; document.body.classList.add("locked"); const e = $("#gate-err"); if (msg){ e.textContent = msg; e.hidden = false; } }
+function unlock(){ document.body.classList.remove("locked"); $("#role-pill").hidden = !(auth && auth.role === "manager"); setTimeout(sizeCanvas, 50); loadJobs(); }
+$("#gate-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const code = $("#gate-code").value.trim(), err = $("#gate-err"), btn = $("#gate-go");
+  if (!code){ err.textContent = "Enter the share code."; err.hidden = false; return; }
+  btn.disabled = true; err.hidden = true;
+  try{
+    const res = await fetch(API + "/api/login", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({code})});
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok){ err.textContent = data.error || "That code isn't right. Check it and try again."; err.hidden = false; return; }
+    auth = {code, role:data.role}; store.set(AUTH_KEY, auth); $("#gate-code").value = ""; unlock();
+  }catch(ex){ err.textContent = "No connection. You need signal the first time you open the app."; err.hidden = false; }
+  finally{ btn.disabled = false; }
+});
+
+/* ---------- form state (kept on this phone until saved) ---------- */
+const blank = () => ({mode:"new", jobId:null, jobName:"", dayId:null, dayNo:1,
+  date:todayISO(), job:"", people:[], tasks:"", hours:{}, km:"", materials:[{item:"", qty:""}], complete:"", comments:"", signedBy:"", signature:""});
+const KEY = "nzcs.chargeout.v4";
+let state = Object.assign(blank(), store.get(KEY, {}));
+const isEmpty = s => !s.job && !s.people.length && !s.tasks && !Object.values(s.hours || {}).some(h => h.work || h.travel) && !s.km && !s.comments && !s.signature && !s.materials.some(m => m.item || m.qty);
+if (state.mode === "new" && isEmpty(state)) state.date = todayISO();
+const save = () => store.set(KEY, state);
+let finished = null;   // the last job finished on this phone, ready to send
+
+const jobName = () => (state.mode === "new" ? state.job : state.jobName).trim();
+const matList = mats => (mats || []).filter(m => (m.item || "").trim());
+const hoursOf = (d, p, k) => ((d.hours[p] || {})[k] ?? "");
+const totalOf = (d, k) => d.people.reduce((s,p) => s + n(hoursOf(d,p,k)), 0);
+
+/* ---------- render: form ---------- */
+function renderPeople(){
+  const names = Array.from(new Set(STAFF.concat(state.people)));
+  $("#dd-list").innerHTML = names.map((nm,i) => `<label for="p-${i}"><input type="checkbox" id="p-${i}" data-person="${esc(nm)}" ${state.people.includes(nm) ? "checked" : ""}> ${esc(nm)}</label>`).join("")
+    + `<div class="dd-done"><button type="button" class="btn-small btn-primary" id="dd-close">Done</button></div>`;
+  $("#dd-summary").innerHTML = state.people.length ? esc(state.people.join(", ")) : `<span class="ph">Tick who was on site</span>`;
+  const sb = $("#f-signedby");
+  const opts = Array.from(new Set(STAFF.concat(state.people, state.signedBy ? [state.signedBy] : [])));
+  sb.innerHTML = `<option value="">Pick your name</option>` + opts.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join("");
+  sb.value = state.signedBy || "";
+}
+function renderHours(){
+  const host = $("#hours-host");
+  if (!state.people.length){ host.innerHTML = `<p class="hint" style="margin:0">Tick the people on site above and a row for each person appears here.</p>`; return; }
+  host.innerHTML = `<table class="hrs"><thead><tr><th>Person</th><th>Hours worked</th><th>Hours travelled</th></tr></thead><tbody>` +
+    state.people.map((p,i) => `<tr><td class="name">${esc(p)}</td>
+      <td><input type="number" inputmode="decimal" min="0" step="0.25" autocomplete="off" id="h-${i}-work" data-person-h="${esc(p)}" data-kind="work" value="${esc(hoursOf(state,p,'work'))}" placeholder="0" aria-label="Hours worked by ${esc(p)}"></td>
+      <td><input type="number" inputmode="decimal" min="0" step="0.25" autocomplete="off" id="h-${i}-travel" data-person-h="${esc(p)}" data-kind="travel" value="${esc(hoursOf(state,p,'travel'))}" placeholder="0" aria-label="Hours travelled by ${esc(p)}"></td></tr>`).join("") +
+    `</tbody>${state.people.length > 1 ? `<tfoot><tr><td>Total</td><td id="h-tot-work"></td><td id="h-tot-travel"></td></tr></tfoot>` : ""}</table>` +
+    (state.people.length > 1 ? `<button type="button" id="btn-samehours" class="btn-small btn-ghost" style="margin-top:6px">Copy first person's hours to everyone</button>` : "");
+  renderHourTotals();
+}
+function renderHourTotals(){
+  const w = $("#h-tot-work"), t = $("#h-tot-travel");
+  if (w) w.textContent = fmt(totalOf(state,"work")); if (t) t.textContent = fmt(totalOf(state,"travel"));
+}
+function renderMaterials(){
+  $("#mat-host").innerHTML = state.materials.map((m,i) => `<div class="mat-row">
+    <div class="field"><label for="m-${i}-item">Material</label><input type="text" id="m-${i}-item" autocomplete="off" data-mi="${i}" data-mk="item" value="${esc(m.item)}" placeholder="e.g. Glyphosate gel"></div>
+    <div class="field"><label for="m-${i}-qty">Quantity</label><input type="text" id="m-${i}-qty" autocomplete="off" data-mi="${i}" data-mk="qty" value="${esc(m.qty)}" placeholder="e.g. 100 g"></div>
+    <button type="button" class="icon-btn" id="m-${i}-del" data-mdel="${i}" aria-label="Remove material ${i+1}">×</button>
+  </div>`).join("") || `<p class="hint" style="margin:0">No materials used.</p>`;
+}
+function renderScalars(){
+  document.querySelectorAll("[data-k]").forEach(el => { if (el.id !== "f-signedby") el.value = state[el.dataset.k] ?? ""; });
+  const fj = $("#f-job");
+  if (state.mode === "new"){ fj.readOnly = false; fj.value = state.job; }
+  else { fj.readOnly = true; fj.value = state.jobName; }
+  document.querySelectorAll("[data-complete]").forEach(b => b.setAttribute("aria-pressed", String(state.complete === b.dataset.complete)));
+  $("#complete-field").hidden = state.mode === "editDay";
+  const banner = $("#mode-banner");
+  banner.hidden = state.mode === "new";
+  if (state.mode === "addDay") $("#mode-text").textContent = `Adding day ${state.dayNo} to ${state.jobName}`;
+  if (state.mode === "editDay") $("#mode-text").textContent = `Editing day ${state.dayNo} of ${state.jobName}`;
+}
+function renderBar(){
+  $("#bar-sum").innerHTML = `<b>${fmt(totalOf(state,"work"))}</b> hrs worked · <b>${fmt(totalOf(state,"travel"))}</b> hrs travel · <b>${fmt(state.km)}</b> km`;
+}
+function renderSend(){
+  const host = $("#send-host");
+  if (finished){
+    const days = finished.days.length;
+    host.innerHTML = `<div class="done-box"><b>${esc(finished.job_name)} is finished${days > 1 ? ` (${days} days)` : ""}.</b>
+      <span class="hint">Now send the PDF to Sam.</span>
+      <div><span class="hint">To:</span> <span class="addr">${esc(SEND_TO)}</span></div>
+      <div class="btns"><button type="button" class="btn-hivis" id="btn-share">Send PDF to Sam</button><button type="button" id="btn-pdf">Download PDF</button></div>
+      <div class="btns"><a class="btn" id="btn-mail" href="${mailHref(finished)}">Open email to Sam</a><button type="button" id="btn-copy">Copy email text</button></div>
+      <span class="hint" id="share-hint">${canShareFiles ? "Opens your phone's share menu with the PDF attached. Pick Gmail or Outlook, then paste Sam's address into the To line (it's copied for you)." : "Download the PDF, then use Open email to Sam and attach it from your Downloads."}</span>
+      <div class="status" id="send-status" role="status"></div>
+      <button type="button" class="btn-small btn-ghost" id="btn-done" style="justify-self:start">Done, start a new form</button></div>`;
+    return;
+  }
+  let label, hint, cls = "btn-primary";
+  if (state.mode === "editDay"){ label = "Save changes"; hint = `Updates day ${state.dayNo} of ${esc(state.jobName)}.`; }
+  else if (state.complete === "No"){ label = state.mode === "addDay" ? "Save day to job" : "Save to jobs in progress"; hint = "The next crew can open it from Jobs in progress and add their day."; }
+  else if (state.complete === "Yes"){ label = "Finish job"; hint = "Saves the job as complete. Then you'll send the PDF to Sam."; cls = "btn-hivis"; }
+  else { label = "Save"; hint = "Answer “Is job complete and ready to charge?” first."; }
+  host.innerHTML = `<div class="btns"><button type="button" class="${cls}" id="btn-save">${label}</button></div><span class="hint">${hint}</span><div class="status" id="save-status" role="status"></div>`;
+}
+function renderAll(){ renderScalars(); renderPeople(); renderHours(); renderMaterials(); renderBar(); renderSend(); loadSignature(); }
+
+/* ---------- form events ---------- */
+const form = $("#form");
+form.addEventListener("submit", e => e.preventDefault());
+form.addEventListener("input", e => {
+  const el = e.target;
+  if (el.dataset.k){
+    if (el.id === "f-job" && state.mode !== "new") return;
+    state[el.dataset.k] = el.value;
+    if (el.dataset.k === "job"){ el.classList.remove("invalid"); $("#err-job").hidden = true; }
+    if (el.dataset.k === "signedBy") $("#err-signedby").hidden = true;
+  } else if (el.dataset.mk){
+    state.materials[+el.dataset.mi][el.dataset.mk] = el.value;
+  } else if (el.dataset.kind){
+    const p = el.dataset.personH; state.hours[p] = state.hours[p] || {}; state.hours[p][el.dataset.kind] = el.value; renderHourTotals();
+  }
+  save(); renderBar();
+});
+form.addEventListener("change", e => {
+  const el = e.target;
+  if (el.id === "f-signedby"){ state.signedBy = el.value; $("#err-signedby").hidden = true; save(); return; }
+  if (el.dataset.person){
+    const nm = el.dataset.person;
+    state.people = el.checked ? state.people.concat(nm) : state.people.filter(x => x !== nm);
+    const order = Array.from(new Set(STAFF.concat(state.people)));
+    state.people.sort((a,b) => order.indexOf(a) - order.indexOf(b));
+    $("#err-people").hidden = true;
+    save(); $("#dd-summary").innerHTML = state.people.length ? esc(state.people.join(", ")) : `<span class="ph">Tick who was on site</span>`;
+    renderHours(); renderBar();
+  }
+});
+form.addEventListener("click", e => {
+  const id = e.target.id;
+  if (id === "dd-close"){ $("#dd-people").open = false; return; }
+  if (id === "btn-samehours"){
+    const f = state.hours[state.people[0]] || {};
+    state.people.forEach(p => state.hours[p] = {work:f.work ?? "", travel:f.travel ?? ""});
+    save(); renderHours(); renderBar(); return;
+  }
+  const c = e.target.closest("[data-complete]");
+  if (c){ state.complete = state.complete === c.dataset.complete ? "" : c.dataset.complete; $("#err-complete").hidden = true; save(); renderScalars(); renderSend(); return; }
+  const del = e.target.closest("[data-mdel]");
+  if (del){ state.materials.splice(+del.dataset.mdel, 1); save(); renderMaterials(); return; }
+  if (id === "btn-save") return saveDay();
+  if (id === "btn-share") return sharePdf();
+  if (id === "btn-pdf") return downloadPdf();
+  if (id === "btn-copy") return copyEmail();
+  if (id === "btn-done"){ finished = null; store.del("nzcs.chargeout.finished"); resetForm(); }
+});
+document.addEventListener("click", e => { const dd = $("#dd-people"); if (dd.open && !dd.contains(e.target)) dd.open = false; });
+$("#btn-addmat").addEventListener("click", () => {
+  state.materials.push({item:"", qty:""}); save(); renderMaterials();
+  const el = $(`#m-${state.materials.length - 1}-item`); if (el) el.focus();
+});
+$("#btn-cancel-mode").addEventListener("click", () => resetForm());
+
+function resetForm(){ state = blank(); save(); clearSig(true); renderAll(); window.scrollTo(0,0); }
+const newBtn = `<button type="button" id="btn-new" class="btn-small">New form</button>`;
+$("#new-wrap").addEventListener("click", e => {
+  const w = $("#new-wrap");
+  if (e.target.id === "btn-new"){
+    if (isEmpty(state) && state.mode === "new"){ finished = null; store.del("nzcs.chargeout.finished"); resetForm(); return; }
+    w.innerHTML = `<span class="confirm">Clear this form? <button type="button" id="btn-new-yes" class="btn-small btn-primary">Clear</button><button type="button" id="btn-new-no" class="btn-small">Keep</button></span>`;
+  } else if (e.target.id === "btn-new-yes"){ finished = null; store.del("nzcs.chargeout.finished"); resetForm(); w.innerHTML = newBtn; }
+  else if (e.target.id === "btn-new-no"){ w.innerHTML = newBtn; }
+});
+
+/* ---------- signature ---------- */
+const canvas = $("#sig"), ctx = canvas.getContext("2d");
+let drawing = false;
+function sizeCanvas(){
+  const r = canvas.getBoundingClientRect(); const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  if (!r.width) return;
+  canvas.width = Math.round(r.width*dpr); canvas.height = Math.round(r.height*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0); ctx.lineWidth = 2.4; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "#15211a";
+  loadSignature();
+}
+function loadSignature(){
+  const r = canvas.getBoundingClientRect();
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  $("#sig-hint").hidden = !!state.signature;
+  if (state.signature){ const img = new Image(); img.onload = () => ctx.drawImage(img,0,0,r.width,r.height); img.src = state.signature; }
+}
+// Store a small copy (max 500px wide) so each day stays around 20-30 KB.
+function sigSnapshot(){
+  const w = Math.min(500, canvas.width), h = Math.round(canvas.height * w / canvas.width);
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  c.getContext("2d").drawImage(canvas, 0, 0, w, h);
+  return c.toDataURL("image/png");
+}
+function pos(e){ const r = canvas.getBoundingClientRect(); return {x:e.clientX - r.left, y:e.clientY - r.top}; }
+canvas.addEventListener("pointerdown", e => { drawing = true; canvas.setPointerCapture(e.pointerId); const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x+0.1,p.y+0.1); ctx.stroke(); $("#sig-hint").hidden = true; });
+canvas.addEventListener("pointermove", e => { if (!drawing) return; const p = pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); });
+const endDraw = () => { if (!drawing) return; drawing = false; state.signature = sigSnapshot(); $("#err-sig").hidden = true; save(); };
+canvas.addEventListener("pointerup", endDraw); canvas.addEventListener("pointercancel", endDraw);
+function clearSig(silent){ ctx.clearRect(0,0,canvas.width,canvas.height); $("#sig-hint").hidden = false; if (!silent){ state.signature = ""; save(); } }
+$("#btn-sigclear").addEventListener("click", () => clearSig(false));
+window.addEventListener("resize", () => { clearTimeout(sizeCanvas.t); sizeCanvas.t = setTimeout(sizeCanvas, 150); });
+
+/* ---------- validation & saving ---------- */
+function validate(){
+  const missing = [];
+  const bad = (sel, errSel) => { if (errSel) $(errSel).hidden = false; missing.push(sel); };
+  if (!jobName()){ $("#f-job").classList.add("invalid"); bad("#f-job", "#err-job"); }
+  if (!state.people.length) bad("#dd-people", "#err-people");
+  if (state.mode !== "editDay" && !state.complete) bad("#complete-field", "#err-complete");
+  if (!state.signedBy) bad("#f-signedby", "#err-signedby");
+  if (!state.signature) bad("#sig-wrap", "#err-sig");
+  if (missing.length) $(missing[0]).scrollIntoView({block:"center"});
+  return !missing.length;
+}
+function dayPayload(){
+  return {date:state.date, people:state.people.slice(), hours:Object.fromEntries(state.people.map(p => [p, state.hours[p] || {work:"",travel:""}])),
+    km:state.km, materials:matList(state.materials), tasks:state.tasks, comments:state.comments, signedBy:state.signedBy, signature:state.signature};
+}
+async function saveDay(){
+  const st = $("#save-status"), btn = $("#btn-save");
+  st.className = "status"; st.textContent = "";
+  if (!validate()){ st.className = "status bad"; st.textContent = "Some details are missing. Check the fields marked in red."; return; }
+  const complete = state.mode !== "editDay" && state.complete === "Yes";
+  btn.disabled = true; st.textContent = "Saving…";
+  try{
+    let res;
+    if (state.mode === "new") res = await api("POST", "/api/jobs", {job_name:state.job.trim(), day:dayPayload(), complete});
+    else if (state.mode === "addDay") res = await api("POST", `/api/jobs/${state.jobId}/days`, {day:dayPayload(), complete});
+    else res = await api("PUT", `/api/jobs/${state.jobId}/days/${state.dayId}`, {day:dayPayload(), complete:false});
+    const job = res.job;
+    openJob = null; jobsView = "list"; loadJobs();
+    if (complete){
+      finished = job; store.set("nzcs.chargeout.finished", job);
+      state = blank(); save(); clearSig(true); renderAll(); $("#finish").scrollIntoView({block:"start"});
+    } else {
+      const msg = state.mode === "editDay" ? `Saved changes to day ${state.dayNo}.` : `Saved. ${job.job_name} is in Jobs in progress (${plural(job.days.length, "day")}).`;
+      resetForm(); const s2 = $("#save-status"); if (s2){ s2.textContent = msg; }
+      $("#finish").scrollIntoView({block:"start"});
+    }
+  }catch(err){
+    btn.disabled = false; st.className = "status bad";
+    st.textContent = err.offline ? "No signal. Nothing is lost: your day is kept on this phone. Tap Save again when you have signal." : err.message;
+  }
+}
+
+/* ---------- jobs in progress ---------- */
+let jobsCache = [], openJob = null, jobsView = "list";
+async function loadJobs(){
+  if (!auth) return;
+  try{
+    const res = await api("GET", "/api/jobs?status=open");
+    jobsCache = res.jobs; if (res.role && auth && auth.role !== res.role){ auth.role = res.role; store.set(AUTH_KEY, auth); $("#role-pill").hidden = auth.role !== "manager"; }
+    $("#jobs-count").textContent = jobsCache.length;
+    if (jobsView === "list") renderJobsList();
+  }catch(err){ if (jobsView === "list") renderJobsList(err.message); }
+}
+function jobsHead(title, back){
+  return `<div class="jobs-head">${back ? `<button type="button" class="btn-small" id="jobs-back">← All jobs</button>` : `<h2>${esc(title)}</h2>`}<button type="button" class="btn-small jobs-close" id="jobs-close">Close</button></div>`;
+}
+function renderJobsList(error){
+  jobsView = "list";
+  const host = $("#jobs-host");
+  host.innerHTML = jobsHead("Jobs in progress") +
+    (error ? `<p class="status bad">${esc(error)}</p>` : "") +
+    (jobsCache.length ? `<div class="jobs-list">` + jobsCache.map(j => `<button type="button" class="job-card" data-job="${j.id}">
+        <span class="tag">${plural(j.day_count, "day")} logged</span>
+        <span class="jn">${esc(j.job_name)}</span>
+        <span class="meta">Last: ${esc(dmy(j.last_date))} · ${fmt(j.totals.work)} hrs worked · ${fmt(j.totals.travel)} hrs travel · ${fmt(j.totals.km)} km</span>
+      </button>`).join("") + `</div>`
+      : (error ? "" : `<p class="empty">No jobs in progress. When a charge out is saved with “No” for job complete, it appears here for the next crew.</p>`));
+}
+async function showJob(id){
+  jobsView = "job";
+  const host = $("#jobs-host");
+  host.innerHTML = jobsHead("", true) + `<p class="empty">Loading…</p>`;
+  try{
+    const {job} = await api("GET", `/api/jobs/${id}`);
+    openJob = job; renderJob();
+  }catch(err){ host.innerHTML = jobsHead("", true) + `<p class="status bad">${esc(err.message)}</p>`; }
+}
+function renderJob(){
+  const j = openJob, host = $("#jobs-host"), mgr = auth && auth.role === "manager";
+  host.innerHTML = jobsHead("", true) + `<h2 style="margin:0 0 4px;font-family:var(--f-display);font-size:24px">${esc(j.job_name)}</h2>
+    <p class="meta" style="margin:0 0 12px">${plural(j.days.length, "day")} logged</p>
+    <div class="jobs-list">` + j.days.map((d,i) => `<div class="day-card">
+      <div class="day-head"><b>Day ${i+1} · ${esc(dmy(d.date))}</b><button type="button" class="btn-small" data-edit="${d.id}" data-dayno="${i+1}">Edit</button></div>
+      <table><tr><th>Person</th><th>Worked</th><th>Travel</th></tr>${d.people.map(p => `<tr><td>${esc(p)}</td><td>${fmt(hoursOf(d,p,"work"))}</td><td>${fmt(hoursOf(d,p,"travel"))}</td></tr>`).join("")}</table>
+      <span class="meta">${fmt(d.km)} km${matList(d.materials).length ? " · " + esc(matList(d.materials).map(m => m.item + (m.qty ? " " + m.qty : "")).join(", ")) : ""}</span>
+      ${d.tasks ? `<span class="meta">${esc(d.tasks)}</span>` : ""}
+      ${d.comments ? `<span class="meta">Comments: ${esc(d.comments)}</span>` : ""}
+      <span class="meta">Filled in by ${esc(d.signedBy || "")}</span>
+      ${d.signature ? `<img src="${d.signature}" alt="Signature for day ${i+1}">` : ""}
+    </div>`).join("") + `</div>
+    <div class="job-actions">
+      <button type="button" class="btn-hivis" id="job-addday">+ Add today's day</button>
+      <span id="finish-wrap"><button type="button" id="job-finish" style="width:100%">Job's done, finish without adding a day</button></span>
+      ${mgr ? `<span id="delete-wrap"><button type="button" class="btn-danger" id="job-delete" style="width:100%">Delete this job</button></span>` : ""}
+      <div class="status" id="job-status" role="status"></div>
+    </div>`;
+}
+function openPanel(){ $("#jobs").classList.add("open"); document.body.style.overflow = "hidden"; openJob = null; renderJobsList(); loadJobs(); }
+function closePanel(){ $("#jobs").classList.remove("open"); document.body.style.overflow = ""; }
+const isPanel = () => window.matchMedia("(max-width:1039px)").matches;
+const formIsFree = () => state.mode === "new" && isEmpty(state);
+$("#btn-jobs").addEventListener("click", openPanel);
+$("#jobs-host").addEventListener("click", async e => {
+  const t = e.target, id = t.id;
+  if (id === "jobs-close") return closePanel();
+  if (id === "jobs-back"){ openJob = null; renderJobsList(); return loadJobs(); }
+  const card = t.closest("[data-job]"); if (card) return showJob(card.dataset.job);
+  // Starting a day or an edit replaces whatever is in the form, so check first.
+  if ((id === "job-addday" || t.dataset.edit) && !formIsFree()){
+    const w = t.dataset.edit ? t.closest(".day-head") : t;
+    const warn = document.createElement("div"); warn.className = "confirm";
+    warn.innerHTML = `This replaces the form you've started. <button type="button" class="btn-small btn-primary" data-go="${t.dataset.edit || "add"}">Continue</button>`;
+    w.after(warn); t.disabled = true; return;
+  }
+  const go = t.dataset.go;
+  if (id === "job-addday" || go === "add"){
+    finished = null; clearSig(true);
+    state = Object.assign(blank(), {mode:"addDay", jobId:openJob.id, jobName:openJob.job_name, dayNo:openJob.days.length + 1});
+    save(); renderAll(); if (isPanel()) closePanel(); window.scrollTo(0,0); return;
+  }
+  const editId = t.dataset.edit || (go && go !== "add" ? go : null);
+  if (editId){
+    const i = openJob.days.findIndex(d => d.id === editId), d = openJob.days[i]; if (!d) return;
+    finished = null;
+    state = Object.assign(blank(), {mode:"editDay", jobId:openJob.id, jobName:openJob.job_name, dayId:d.id, dayNo:i + 1,
+      date:d.date, people:d.people.slice(), hours:JSON.parse(JSON.stringify(d.hours)), km:d.km, materials:d.materials.length ? d.materials.map(m => ({...m})) : [{item:"",qty:""}],
+      tasks:d.tasks, comments:d.comments, signedBy:d.signedBy || "", signature:d.signature});
+    save(); renderAll(); if (isPanel()) closePanel(); window.scrollTo(0,0); return;
+  }
+  if (id === "job-finish"){
+    $("#finish-wrap").innerHTML = `<span class="confirm">Finish ${esc(openJob.job_name)} and send it for charging? <button type="button" class="btn-small btn-hivis" id="job-finish-yes">Finish job</button><button type="button" class="btn-small" id="job-cancel">Cancel</button></span>`; return;
+  }
+  if (id === "job-finish-yes"){
+    try{ const {job} = await api("POST", `/api/jobs/${openJob.id}/complete`); finished = job; store.set("nzcs.chargeout.finished", job);
+      if (state.mode !== "new" && state.jobId === job.id){ state = blank(); save(); clearSig(true); }
+      openJob = null; renderJobsList(); loadJobs(); renderAll(); if (isPanel()) closePanel(); $("#finish").scrollIntoView({block:"start"});
+    }catch(err){ $("#job-status").className = "status bad"; $("#job-status").textContent = err.message; }
+    return;
+  }
+  if (id === "job-delete"){
+    $("#delete-wrap").innerHTML = `<span class="confirm">Delete ${esc(openJob.job_name)} and all its days? This can't be undone. <button type="button" class="btn-small btn-danger" id="job-delete-yes">Delete</button><button type="button" class="btn-small" id="job-cancel">Cancel</button></span>`; return;
+  }
+  if (id === "job-delete-yes"){
+    try{ await api("DELETE", `/api/jobs/${openJob.id}`); if (state.jobId === openJob.id){ state = blank(); save(); clearSig(true); renderAll(); }
+      openJob = null; renderJobsList(); loadJobs(); }
+    catch(err){ $("#job-status").className = "status bad"; $("#job-status").textContent = err.message; }
+    return;
+  }
+  if (id === "job-cancel") return renderJob();
+});
+document.addEventListener("visibilitychange", () => { if (!document.hidden && auth) loadJobs(); });
+
+/* ---------- PDF ---------- */
+// Add up material quantities that share a unit ("33 L" + "20 L" = "53 L"); otherwise list them.
+function materialTotals(days){
+  const byItem = new Map();
+  days.forEach(d => matList(d.materials).forEach(m => {
+    const key = m.item.trim().toLowerCase(); if (!byItem.has(key)) byItem.set(key, {item:m.item.trim(), qtys:[]});
+    byItem.get(key).qtys.push((m.qty || "").trim());
+  }));
+  return Array.from(byItem.values()).map(({item, qtys}) => {
+    const parsed = qtys.map(q => q.match(/^([\d.]+)\s*(.*)$/));
+    const units = new Set(parsed.map(p => p ? p[2].toLowerCase() : null));
+    if (qtys.length && parsed.every(Boolean) && units.size === 1){
+      const total = parsed.reduce((s,p) => s + parseFloat(p[1]), 0);
+      return [item, fmt(total) + (parsed[0][2] ? " " + parsed[0][2] : "")];
+    }
+    return [item, qtys.filter(Boolean).join(", ")];
+  });
+}
+function sheetTitle(job){
+  const ds = job.days.map(d => d.date).sort();
+  return `NZCS Staff Charge Out - ${job.job_name} ${dmy(ds[0])}${ds.length > 1 && ds[ds.length-1] !== ds[0] ? " to " + dmy(ds[ds.length-1]) : ""}`;
+}
+function buildPDF(job){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:"mm", format:"a4"});
+  const W = doc.internal.pageSize.getWidth(), M = 18, ink = [21,33,26];
+  const base = {theme:"grid", margin:{left:M,right:M}, styles:{font:"helvetica", fontSize:9.5, textColor:ink, lineColor:[214,212,205], lineWidth:0.2, cellPadding:2.2},
+    headStyles:{fillColor:[243,241,236], textColor:[90,90,85], fontStyle:"normal"}};
+  const wide = {columnStyles:{0:{cellWidth:62}}};
+  const title = sheetTitle(job), days = job.days, multi = days.length > 1;
+  doc.setFont("times","normal"); doc.setFontSize(22); doc.setTextColor(...ink);
+  const tl = doc.splitTextToSize(title, W - 2*M); doc.text(tl, M, 26);
+  let y = 26 + (tl.length-1)*9 + 7;
+  doc.setFont("helvetica","normal"); doc.setFontSize(10.5); doc.text("NZ Conservation Services Limited", M, y); y += 6;
+  const heading = txt => { if (y > 250){ doc.addPage(); y = 20; } doc.setFont("times","normal"); doc.setFontSize(15); doc.setTextColor(...ink); doc.text(txt, M, y); y += 4; };
+  const table = opts => { doc.autoTable(Object.assign({}, base, {startY:y}, opts)); y = doc.lastAutoTable.finalY + 10; };
+  const hoursTable = (rows, totalRow) => {
+    if (totalRow) rows.push(totalRow.map(c => ({content:c, styles:{fontStyle:"bold"}})));
+    table({head:[["Person","Hours worked","Hours travelled"]], body:rows, columnStyles:{0:{cellWidth:62}}}); y -= 6;
+  };
+  const sigRow = (sig) => ({
+    didDrawCell: c => {
+      if (sig && c.section === "body" && c.row.raw && c.row.raw[0] === "Signature" && c.column.index === 1){
+        try{
+          const img = doc.getImageProperties(sig); let h = c.cell.height - 3, w = h * img.width / img.height;
+          if (w > c.cell.width - 4){ w = c.cell.width - 4; h = w * img.height / img.width; }
+          doc.addImage(sig, "PNG", c.cell.x + 2, c.cell.y + 1.5, w, h);
+        }catch(err){}
+      }
+    }});
+  const people = Array.from(new Set(days.flatMap(d => d.people)));
+  const completedOn = job.completed_at ? dmy(job.completed_at.slice(0,10)) : "";
+
+  if (!multi){
+    const d = days[0];
+    table(Object.assign({head:[["Field","Details"]], body:[["Date", dmy(d.date)], ["Job Name / Farm / Landowner / PCA", job.job_name], ["People charge out is for", d.people.join(", ")], ["Description of tasks", d.tasks || ""]]}, wide));
+    heading("Materials / Expendable Items");
+    const mats = matList(d.materials);
+    table({head:[["Item","Quantity"]], body: mats.length ? mats.map(m => [m.item, m.qty]) : [["None used", ""]], columnStyles:{1:{cellWidth:45}}});
+    heading("Hours / Travel / KM");
+    hoursTable(d.people.map(p => [p, hrsTxt(hoursOf(d,p,"work")), hrsTxt(hoursOf(d,p,"travel"))]), d.people.length > 1 ? ["Total", hrsTxt(totalOf(d,"work")), hrsTxt(totalOf(d,"travel"))] : null);
+    table(Object.assign({body:[["KM travelled", d.km === "" ? "" : fmt(d.km) + " km"]]}, wide));
+    heading("Job Wrap Up");
+    doc.autoTable(Object.assign({}, base, {startY:y, body:[["Is job complete and ready to charge?", "Yes"], ["Additional comments", d.comments || ""], ["Filled in and signed by", d.signedBy || ""], ["Signature", {content:"", styles:{minCellHeight:24}}]], columnStyles:{0:{cellWidth:62}}}, sigRow(d.signature)));
+  } else {
+    table(Object.assign({head:[["Field","Details"]], body:[["Job Name / Farm / Landowner / PCA", job.job_name], ["Dates worked", `${days.map(d => dmy(d.date)).join(", ")} (${days.length} days)`], ["People charge out is for", people.join(", ")], ["Is job complete and ready to charge?", "Yes" + (completedOn ? ` (completed ${completedOn})` : "")]]}, wide));
+    heading("Job Totals");
+    const tot = {}; days.forEach(d => d.people.forEach(p => { tot[p] = tot[p] || [0,0]; tot[p][0] += n(hoursOf(d,p,"work")); tot[p][1] += n(hoursOf(d,p,"travel")); }));
+    hoursTable(people.map(p => [p, hrsTxt(tot[p][0]), hrsTxt(tot[p][1])]), ["Total", hrsTxt(people.reduce((s,p) => s + tot[p][0], 0)), hrsTxt(people.reduce((s,p) => s + tot[p][1], 0))]);
+    const mt = materialTotals(days);
+    table(Object.assign({body:[["KM travelled (all days)", fmt(days.reduce((s,d) => s + n(d.km), 0)) + " km"], ["Materials (all days)", mt.length ? mt.map(m => m[0] + (m[1] ? " - " + m[1] : "")).join("\n") : "None used"]]}, wide));
+    days.forEach((d,i) => {
+      if (y > 200){ doc.addPage(); y = 20; }
+      heading(`Day ${i+1} - ${dmy(d.date)}`);
+      table(Object.assign({body:[["Description of tasks", d.tasks || ""]]}, wide)); y -= 6;
+      hoursTable(d.people.map(p => [p, hrsTxt(hoursOf(d,p,"work")), hrsTxt(hoursOf(d,p,"travel"))]), null);
+      const mats = matList(d.materials);
+      doc.autoTable(Object.assign({}, base, {startY:y, body:[["KM travelled", d.km === "" ? "" : fmt(d.km) + " km"], ["Materials", mats.length ? mats.map(m => m.item + (m.qty ? " - " + m.qty : "")).join("\n") : "None used"], ["Comments", d.comments || ""], ["Filled in and signed by", d.signedBy || ""], ["Signature", {content:"", styles:{minCellHeight:20}}]], columnStyles:{0:{cellWidth:62}}}, sigRow(d.signature)));
+      y = doc.lastAutoTable.finalY + 10;
+    });
+  }
+  const pages = doc.getNumberOfPages();
+  for (let i = 1; i <= pages; i++){
+    doc.setPage(i); doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(120,120,115);
+    doc.text(title, 10, 7);
+    doc.text(`Page ${i} of ${pages}`, W - 10, doc.internal.pageSize.getHeight() - 7, {align:"right"});
+  }
+  return doc;
+}
+const fileName = job => sheetTitle(job).replace(/[\\/:*?"<>|]+/g, "-") + ".pdf";
+function makeFile(job){
+  if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("The PDF maker didn't load. Reload the page and try again.");
+  return new File([buildPDF(job).output("blob")], fileName(job), {type:"application/pdf"});
+}
+function downloadFile(file){
+  const url = URL.createObjectURL(file);
+  const a = document.createElement("a"); a.href = url; a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+const canShareFiles = (() => { try{ return !!(navigator.canShare && navigator.canShare({files:[new File(["x"], "t.pdf", {type:"application/pdf"})]})); }catch(e){ return false; } })();
+function sendStatus(msg, bad){ const s = $("#send-status"); if (s){ s.className = "status" + (bad ? " bad" : ""); s.textContent = msg; } }
+async function sharePdf(){
+  if (!finished) return;
+  let file; try{ file = makeFile(finished); }catch(err){ return sendStatus(err.message, true); }
+  try{ navigator.clipboard && navigator.clipboard.writeText(SEND_TO).catch(() => {}); }catch(e){}
+  if (canShareFiles){
+    try{ await navigator.share({files:[file], title:sheetTitle(finished), text:"To: " + SEND_TO + "\n\n" + emailBody(finished)}); sendStatus("Shared. Check the email went to " + SEND_TO + "."); }
+    catch(err){ if (err && err.name === "AbortError") sendStatus("Share cancelled.", true); else { downloadFile(file); sendStatus("Sharing didn't work here, so the PDF was downloaded. Use Open email to Sam and attach it.", true); } }
+  } else {
+    downloadFile(file); sendStatus("PDF downloaded. Opening an email to Sam; attach the PDF from your Downloads.");
+    setTimeout(() => { location.href = mailHref(finished); }, 600);
+  }
+}
+function downloadPdf(){ if (!finished) return; try{ const f = makeFile(finished); downloadFile(f); sendStatus("Downloaded: " + f.name); }catch(err){ sendStatus(err.message, true); } }
+
+/* ---------- email ---------- */
+function emailBody(job){
+  const days = job.days, people = Array.from(new Set(days.flatMap(d => d.people)));
+  const L = [sheetTitle(job), "", "Job: " + job.job_name, "Days: " + days.map(d => dmy(d.date)).join(", "), "People: " + people.join(", "), "", "Hours (worked / travelled):"];
+  people.forEach(p => { const w = days.reduce((s,d) => s + n(hoursOf(d,p,"work")), 0), t = days.reduce((s,d) => s + n(hoursOf(d,p,"travel")), 0); L.push(`  ${p}: ${hrsTxt(w)} / ${hrsTxt(t)}`); });
+  L.push("KM travelled: " + fmt(days.reduce((s,d) => s + n(d.km), 0)) + " km");
+  const mt = materialTotals(days); if (mt.length) L.push("Materials: " + mt.map(m => m[0] + (m[1] ? " - " + m[1] : "")).join(", "));
+  const comments = days.filter(d => d.comments).map(d => `${dmy(d.date)}: ${d.comments}`); if (comments.length){ L.push("Comments:"); comments.forEach(c => L.push("  " + c)); }
+  L.push("", "Job complete and ready to charge: Yes", "Signed charge out sheet attached as PDF.");
+  return L.join("\n");
+}
+const mailHref = job => `mailto:${SEND_TO}?subject=${encodeURIComponent(sheetTitle(job))}&body=${encodeURIComponent(emailBody(job))}`;
+function copyEmail(){
+  if (!finished) return;
+  const txt = "Subject: " + sheetTitle(finished) + "\n\n" + emailBody(finished);
+  const fallback = () => {
+    let ta = $("#copy-fallback");
+    if (!ta){ ta = document.createElement("textarea"); ta.id = "copy-fallback"; ta.style.cssText = "width:100%;min-height:200px"; $("#send-status").after(ta); }
+    ta.value = txt; sendStatus("Copying is blocked here. Select the text below and copy it.", true); ta.select();
+  };
+  try{ navigator.clipboard.writeText(txt).then(() => sendStatus("Copied. Paste it into a new email to " + SEND_TO + " and attach the PDF."), fallback); }catch(e){ fallback(); }
+}
+
+/* ---------- start ---------- */
+finished = store.get("nzcs.chargeout.finished", null);
+// Only keep a finished job on screen if it was finished today.
+if (finished && (!finished.completed_at || finished.completed_at.slice(0,10) !== new Date().toISOString().slice(0,10))) { finished = null; store.del("nzcs.chargeout.finished"); }
+renderAll();
+if (auth) unlock();
+requestAnimationFrame(sizeCanvas);
+if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+})();
+</script>
+</body>
+</html>

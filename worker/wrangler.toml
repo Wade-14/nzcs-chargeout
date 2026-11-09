@@ -1,0 +1,15 @@
+name = "nzcs-chargeout-api"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+account_id = "dc50d269d55490062b7b588156ed2fa1"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "nzcs-chargeout"
+database_id = "c394cb2b-4311-4ee2-8343-da56789c57f3"
+
+[triggers]
+crons = ["17 14 * * *"]   # daily tidy-up, ~3am NZ time
+
+# WORKER_CODE and MANAGER_CODE are set as Cloudflare secrets (wrangler secret put), not here.
