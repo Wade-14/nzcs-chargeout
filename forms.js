@@ -167,6 +167,43 @@ const FORMS = {
       ]},
     ],
   },
+  quad: {
+    hash: "#quad-check",
+    title: "Quad / LUV Check",
+    pdfTitle: "NZCS Quad Pre Start Check",
+    blurb: "Pre-start check for quads, LUVs and the DR200: tyres, brakes, lights, oil, hours.",
+    sendTo: ["team@nzconservation.nz", "operations@nzconservation.nz"],
+    sendToLabel: "Wade and Gareth",
+    icon: '<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M9 17h6M6 14l2-5h6l3 5M12 9V6h3"/>',
+    titleFrom: v => `${v.vehicle || "Vehicle"} ${dmy(v.when)}`,
+    extraPeople: ["Sam Haliday", "Toby Haliday"],
+    sections: [
+      { title: "Check details", fields: [
+        { id:"when", type:"datetime", label:"Date & time", required:true },
+        { id:"inspector", type:"person", label:"Inspector (staff performing the check)", required:true },
+        { id:"vehicle", type:"choice", label:"Which quad / LUV is being inspected?", required:true,
+          options:["Quad 1","Quad 2","Quad 3","Quad 4","Quad 5","Quad 6","DR200 two-wheeler","Red LUV 570","Green LUV XP 1000"] },
+      ]},
+      { title: "Pre-start checks", fields: [
+        { id:"checks", type:"checklist", label:"Tick each item once checked and OK",
+          options:["Tyre pressure (3.6 psi)","Brakes (hand and foot)","Brake lights","Headlights","Oil level","Tyre tread","Fire extinguisher present and valid","No obvious broken or damaged parts"] },
+        { id:"damage", type:"textarea", label:"If anything is damaged or not OK, name the damage and how / when it occurred" },
+      ]},
+      { title: "Service", fields: [
+        { id:"hours", type:"number", label:"Current hours" },
+        { id:"serviceHours", type:"number", label:"Next service due at (hours)" },
+        { type:"derived", label:"Service status", compute:v => {
+            const h = parseFloat(v.hours), sv = parseFloat(v.serviceHours);
+            if (!isFinite(h) || !isFinite(sv)) return "";
+            const left = Math.round((sv - h) * 10) / 10;
+            return left > 0 ? `${left} hours until service` : left === 0 ? "Service due now" : `Service overdue by ${-left} hours`;
+          } },
+      ]},
+      { title: "Sign off", fields: [
+        { id:"signatures", type:"signatures", label:"Signature", required:true },
+      ]},
+    ],
+  },
 };
 window.NZCS_ONEOFF = FORMS;
 
@@ -181,6 +218,7 @@ const blankValues = form => {
               f.type === "signatures" ? [{name:"", sig:""}] :
               f.type === "mixes" ? [{product:"", ml:"", litres:"", unit:"mL"}] :
               f.type === "tally" ? {} :
+              f.type === "checklist" ? [] :
               f.type === "datetime" ? nowLocal() :
               f.type === "location" ? {address:"", lat:null, lng:null} : "";
   }));
@@ -221,6 +259,22 @@ function fieldHTML(form, f, v){
       return `<div class="field"><label for="${id}">${esc(f.label)}${req}</label><input type="text" id="${id}" data-g="${f.id}" autocomplete="off" value="${esc(v[f.id])}" placeholder="${esc(f.placeholder || "")}">${err}</div>`;
     case "textarea":
       return `<div class="field"><label for="${id}">${esc(f.label)}${req}</label><textarea id="${id}" data-g="${f.id}" placeholder="${esc(f.placeholder || "")}">${esc(v[f.id])}</textarea>${err}</div>`;
+    case "number":
+      return `<div class="field"><label for="${id}">${esc(f.label)}${req}</label><input type="number" inputmode="decimal" min="0" step="any" id="${id}" data-g="${f.id}" value="${esc(v[f.id])}" placeholder="0">${err}</div>`;
+    case "person": {
+      const names = peopleList(form);
+      return `<div class="field"><label for="${id}">${esc(f.label)}${req}</label><select id="${id}" data-g="${f.id}"><option value="">Pick a name</option>${names.map(nm => `<option ${v[f.id] === nm ? "selected" : ""}>${esc(nm)}</option>`).join("")}</select>${err}</div>`;
+    }
+    case "checklist": {
+      const ticked = v[f.id] || [];
+      return `<div class="field"><span class="label">${esc(f.label)}</span><div class="checklist">` +
+        f.options.map((o,i) => `<button type="button" class="check-item" id="${id}-${i}" data-gm="${f.id}" data-val="${esc(o)}" aria-pressed="${ticked.includes(o)}"><span class="box" aria-hidden="true"></span>${esc(o)}</button>`).join("") +
+        `</div>${err}</div>`;
+    }
+    case "derived": {
+      const txt = f.compute(v);
+      return `<div class="field derived" data-derived="${esc(f.label)}"${txt ? "" : " hidden"}><span class="label">${esc(f.label)}</span><b class="derived-val ${/overdue|due now/i.test(txt) ? "warn" : ""}">${esc(txt)}</b></div>`;
+    }
     case "time":
       return `<div class="field"><label for="${id}">${esc(f.label)}${req}</label><input type="time" id="${id}" data-g="${f.id}" value="${esc(v[f.id])}">${err}</div>`;
     case "tally": {
@@ -310,6 +364,17 @@ function rerenderIfShapeChanged(){
   if (shapeOf() !== rerenderIfShapeChanged.last){ const y = window.scrollY; render(); window.scrollTo(0, y); }
 }
 
+function updateDerived(){
+  const form = FORMS[current], v = values();
+  form.sections.forEach(s => s.fields.filter(f => f.type === "derived").forEach(f => {
+    const el = document.querySelector(`[data-derived="${CSS.escape(f.label)}"]`); if (!el) return;
+    const txt = f.compute(v); el.hidden = !txt;
+    const b = el.querySelector(".derived-val"); b.textContent = txt; b.classList.toggle("warn", /overdue|due now/i.test(txt));
+  }));
+}
+// <select> fields fire "change", not always "input"
+document.addEventListener("change", e => { const t = e.target; if (t.matches && t.matches("#generic-body select[data-g]")){ const v = values(); if (v){ v[t.dataset.g] = t.value; const er = $(`#g-${t.dataset.g}-err`); if (er) er.hidden = true; } } });
+
 /* ---------------- Signature pads ---------------- */
 function initSigs(){
   document.querySelectorAll("#generic-body canvas[data-gsig]").forEach(c => {
@@ -352,7 +417,7 @@ function bind(){
   const host = $("#generic-body");
   host.addEventListener("input", e => {
     const t = e.target, v = values(); if (!v) return;
-    if (t.dataset.g){ v[t.dataset.g] = t.value; const er = $(`#g-${t.dataset.g}-err`); if (er) er.hidden = true; }
+    if (t.dataset.g){ v[t.dataset.g] = t.value; const er = $(`#g-${t.dataset.g}-err`); if (er) er.hidden = true; updateDerived(); }
     else if (t.dataset.gl){ v[t.dataset.gl].address = t.value; }
     else if (t.dataset.gso){ const s = v[t.dataset.gso][+t.dataset.i]; s.name = t.value; s.other = true; }
     else if (t.dataset.gt){ const T = v[t.dataset.gt]; if (t.value === "") delete T[t.dataset.key]; else T[t.dataset.key] = t.value; }
@@ -386,7 +451,7 @@ function bind(){
   });
   host.addEventListener("click", async e => {
     const t = e.target, v = values(); if (!v) return;
-    if (t.dataset.gc){ v[t.dataset.gc] = v[t.dataset.gc] === t.dataset.val ? "" : t.dataset.val;
+    if (t.dataset.gc){ v[t.dataset.gc] = v[t.dataset.gc] === t.dataset.val ? "" : t.dataset.val; { const er = $(`#g-${t.dataset.gc}-err`); if (er && v[t.dataset.gc]) er.hidden = true; }
       t.parentElement.querySelectorAll(".chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.val === v[t.dataset.gc]))); rerenderIfShapeChanged(); return; }
     if (t.dataset.gm){ const list = v[t.dataset.gm], val = t.dataset.val;
       v[t.dataset.gm] = list.includes(val) ? list.filter(x => x !== val) : list.concat(val);
@@ -497,6 +562,7 @@ function answerText(f, v){
   if (f.type === "tally") return f.rows.map(r => r.name + ": " + r.cols.filter(c => tallyCols(f, v).includes(c)).map(c => `${c.toLowerCase()} ${a[r.name + "|" + c] || 0}`).join(", ")).join("\n");
   if (f.type === "mixes") return usedMixes(a).map(mixLine).join("\n");
   if (f.type === "location") return [a.address, a.lat != null ? `GPS ${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}` : ""].filter(Boolean).join("\n");
+  if (f.type === "derived") return f.compute(v);
   if (Array.isArray(a)) return a.join(", ");
   return a || "";
 }
@@ -520,6 +586,8 @@ function buildPDF(){
       if (f.showIf && !f.showIf(v)) return;
       if (f.type === "notice"){ rows.push([{content:(f.title ? f.title + ": " : "") + f.text, colSpan:2, styles:{fontStyle:"italic", textColor:[70,80,72], fillColor:[247,248,245]}}]); return; }
       if (f.type === "signatures" || f.type === "photos" || f.type === "tally") return;
+      if (f.type === "checklist"){ f.options.forEach(o => rows.push([o, v[f.id].includes(o) ? "Checked OK" : "NOT TICKED"])); return; }
+      if (f.type === "derived"){ const t = f.compute(v); if (t) rows.push([f.label, t]); return; }
       rows.push([f.label, answerText(f, v)]);
       if (f.type === "location" && v[f.id].lat != null) links.push(`https://www.google.com/maps?q=${v[f.id].lat},${v[f.id].lng}`);
     });

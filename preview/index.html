@@ -225,6 +225,14 @@ body.view-generic .home,body.view-generic .layout,body.view-generic .bar,body.lo
 .tally td{padding:4px}
 .tally td input{text-align:center;min-height:44px;padding:8px 4px;min-width:64px}
 .tally td.na{text-align:center;color:var(--muted)}
+.checklist{display:grid;gap:8px}
+.check-item{justify-content:flex-start;text-align:left;gap:12px;background:var(--sunken);font-weight:500;min-height:50px}
+.check-item .box{pointer-events:none;width:24px;height:24px;border:2px solid var(--muted);border-radius:6px;flex:none;display:grid;place-items:center;background:var(--surface)}
+.check-item[aria-pressed="true"]{border-color:var(--forest);background:var(--forest-soft)}
+.check-item[aria-pressed="true"] .box{background:var(--forest);border-color:var(--forest)}
+.check-item[aria-pressed="true"] .box::after{content:"";width:6px;height:12px;border:solid var(--forest-ink);border-width:0 3px 3px 0;transform:translateY(-2px) rotate(45deg)}
+.derived-val{font-size:17px;color:var(--forest)}
+.derived-val.warn{color:var(--danger)}
 .loc-map{width:100%;max-width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 </style>
