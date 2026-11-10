@@ -19,6 +19,8 @@ Field-staff forms app for NZ Conservation Services Ltd (Southland, NZ). Staff fi
 - `forms.js`: engine for **one-off forms** plus their definitions (`FORMS`). Each form is a list of sections and fields; the engine renders, validates, builds the PDF and shares it. New forms are added here.
 - `sw.js`: service worker (network-first, offline fallback). **Bump `CACHE` on every release**, in both `sw.js` and `preview/sw.js`.
 - `vendor/`: jsPDF 2.5.1 and jsPDF-AutoTable 3.8.2 (local copies; the app has no external script dependencies).
+- `vendor/logo.js`: the NZCS logo (from their own PDFs, 225 × 233 px) as a data URL, printed top-left on page 1 of every PDF.
+- `icon-*.png`: app icons made from the round emblem on white; `-maskable` versions keep the emblem inside the safe zone for Android shapes. A sharper original logo (512 px or larger) would give a crisper icon.
 - `preview/`: a full copy of the app for testing. Same files.
 - `worker/`: Cloudflare Worker (`src/index.js`), D1 schema (`schema.sql`), `wrangler.toml`.
 

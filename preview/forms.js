@@ -584,8 +584,11 @@ function buildPDF(){
     headStyles:{fillColor:[243,241,236], textColor:[90,90,85], fontStyle:"normal"}, columnStyles:{0:{cellWidth:70, fontStyle:"bold"}}};
   const title = `${form.pdfTitle} - ${form.titleFrom(v)}`;
   doc.setFont("times","normal"); doc.setFontSize(22); doc.setTextColor(...ink);
-  const tl = doc.splitTextToSize(title, W - 2*M); doc.text(tl, M, 26);
-  let y = 26 + (tl.length-1)*9 + 7;
+  // Company logo top-left on the first page, title underneath it
+  let top = 26;
+  if (window.NZCS_LOGO){ try{ doc.addImage(window.NZCS_LOGO, "JPEG", M, 8, 20, 20.7); top = 40; }catch(e){} }
+  const tl = doc.splitTextToSize(title, W - 2*M); doc.text(tl, M, top);
+  let y = top + (tl.length-1)*9 + 7;
   doc.setFont("helvetica","normal"); doc.setFontSize(10.5); doc.text("NZ Conservation Services Limited", M, y); y += 8;
   const heading = txt => { if (y > H - 40){ doc.addPage(); y = 20; } doc.setFont("times","normal"); doc.setFontSize(15); doc.setTextColor(...ink); doc.text(txt, M, y); y += 4; };
   const links = [];

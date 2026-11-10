@@ -401,6 +401,7 @@ body.view-generic .home,body.view-generic .layout,body.view-generic .bar,body.lo
 
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jspdf.plugin.autotable.min.js"></script>
+<script src="vendor/logo.js"></script>
 <script src="forms.js"></script>
 <script>
 (function(){
@@ -823,8 +824,11 @@ function buildPDF(job){
   const wide = {columnStyles:{0:{cellWidth:62}}};
   const title = sheetTitle(job), days = job.days, multi = days.length > 1;
   doc.setFont("times","normal"); doc.setFontSize(22); doc.setTextColor(...ink);
-  const tl = doc.splitTextToSize(title, W - 2*M); doc.text(tl, M, 26);
-  let y = 26 + (tl.length-1)*9 + 7;
+  // Company logo top-left on the first page, title underneath it
+  let top = 26;
+  if (window.NZCS_LOGO){ try{ doc.addImage(window.NZCS_LOGO, "JPEG", M, 8, 20, 20.7); top = 40; }catch(e){} }
+  const tl = doc.splitTextToSize(title, W - 2*M); doc.text(tl, M, top);
+  let y = top + (tl.length-1)*9 + 7;
   doc.setFont("helvetica","normal"); doc.setFontSize(10.5); doc.text("NZ Conservation Services Limited", M, y); y += 6;
   const heading = txt => { if (y > 250){ doc.addPage(); y = 20; } doc.setFont("times","normal"); doc.setFontSize(15); doc.setTextColor(...ink); doc.text(txt, M, y); y += 4; };
   const table = opts => { doc.autoTable(Object.assign({}, base, {startY:y}, opts)); y = doc.lastAutoTable.finalY + 10; };
