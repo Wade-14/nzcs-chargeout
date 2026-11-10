@@ -188,7 +188,7 @@ const FORMS = {
           options:["Quad 1","Quad 2","Quad 3","Quad 4","Quad 5","Quad 6","DR200 two-wheeler","Red LUV 570","Green LUV XP 1000"] },
       ]},
       { title: "Pre-start checks", fields: [
-        { id:"checks", type:"checklist", label:"Tick each item once checked and OK",
+        { id:"checks", type:"checklist", alertUnticked:true, label:"Tick each item once checked and OK",
           options:["Tyre pressure (3.6 psi)","Brakes (hand and foot)","Brake lights","Headlights","Oil level","Tyre tread","Fire extinguisher present and valid","No obvious broken or damaged parts"] },
         { id:"damage", type:"textarea", label:"If anything is damaged or not OK, name the damage and how / when it occurred" },
         { id:"photos", type:"photos", label:"Photos of any damage or broken parts (optional)" },
@@ -196,7 +196,7 @@ const FORMS = {
       { title: "Service", fields: [
         { id:"hours", type:"number", label:"Current hours" },
         { id:"serviceHours", type:"number", label:"Next service due at (hours)" },
-        { type:"derived", label:"Service status", compute:v => {
+        { type:"derived", label:"Service status", alertWhen:v => { const h = parseFloat(v.hours), sv = parseFloat(v.serviceHours); return isFinite(h) && isFinite(sv) && sv - h <= 0; }, compute:v => {
             const h = parseFloat(v.hours), sv = parseFloat(v.serviceHours);
             if (!isFinite(h) || !isFinite(sv)) return "";
             const left = Math.round((sv - h) * 10) / 10;
@@ -279,7 +279,7 @@ const FORMS = {
         { id:"engineOk", type:"choice", options:YN, alertIf:"No", label:"Is the engine in working condition?" },
         { id:"water", type:"choice", options:YN, alertIf:"No", label:"Is the water level correct?" },
         { id:"leaks", type:"choice", options:YN, alertIf:"Yes", label:"Any leaks under the vehicle or in the engine bay?" },
-        { id:"fuel", type:"choice", options:YN, alertIf:"No", label:"Enough fuel for the day's activities?" },
+        { id:"fuel", type:"choice", options:YN, label:"Enough fuel for the day's activities?" },
         { id:"washer", type:"choice", options:YN, alertIf:"No", label:"Does the window washer reservoir have enough water?" },
       ]},
       { title: "Tyres", fields: [
@@ -360,7 +360,12 @@ const usedMixes = list => (list || []).filter(m => m.product.trim() || m.ml !== 
 const isAlert = (f, v) => f.alertIf != null && (!f.showIf || f.showIf(v)) && v[f.id] === f.alertIf;
 function alertLabels(form, v){
   const out = [];
-  form.sections.forEach(s => s.fields.forEach(f => { if (isAlert(f, v)) out.push(`${f.label.replace(/\?$/, "")}: ${v[f.id]}`); }));
+  form.sections.forEach(s => s.fields.forEach(f => {
+    if (f.showIf && !f.showIf(v)) return;
+    if (isAlert(f, v)) out.push(`${f.label.replace(/\?$/, "")}: ${v[f.id]}`);
+    if (f.type === "checklist" && f.alertUnticked) f.options.forEach(o => { if (!v[f.id].includes(o)) out.push(`${o}: not ticked`); });
+    if (f.type === "derived" && f.alertWhen && f.alertWhen(v)) out.push(f.compute(v));
+  }));
   return out;
 }
 
@@ -720,8 +725,14 @@ function buildPDF(){
       if (f.showIf && !f.showIf(v)) return;
       if (f.type === "notice"){ rows.push([{content:(f.title ? f.title + ": " : "") + f.text, colSpan:2, styles:{fontStyle:"italic", textColor:[70,80,72], fillColor:[247,248,245]}}]); return; }
       if (f.type === "signatures" || f.type === "photos" || f.type === "tally") return;
-      if (f.type === "checklist"){ f.options.forEach(o => rows.push([o, v[f.id].includes(o) ? "Checked OK" : "NOT TICKED"])); return; }
-      if (f.type === "derived"){ const t = f.compute(v); if (t) rows.push([f.label, t]); return; }
+      if (f.type === "checklist"){ f.options.forEach(o => {
+        if (v[f.id].includes(o)) rows.push([o, "Checked OK"]);
+        else if (f.alertUnticked) rows.push([{content:o, styles:{textColor:RED}}, {content:"NOT TICKED  (needs attention)", styles:{textColor:RED, fontStyle:"bold", fillColor:[251,228,226]}}]);
+        else rows.push([o, "NOT TICKED"]);
+      }); return; }
+      if (f.type === "derived"){ const t = f.compute(v); if (!t) return;
+        if (f.alertWhen && f.alertWhen(v)) rows.push([{content:f.label, styles:{textColor:RED}}, {content:t, styles:{textColor:RED, fontStyle:"bold", fillColor:[251,228,226]}}]);
+        else rows.push([f.label, t]); return; }
       if (isAlert(f, v)) rows.push([{content:f.label, styles:{textColor:RED}}, {content:answerText(f, v) + "  (needs attention)", styles:{textColor:RED, fontStyle:"bold", fillColor:[251,228,226]}}]);
       else rows.push([f.label, answerText(f, v)]);
       if (f.type === "location" && v[f.id].lat != null) links.push(`https://www.google.com/maps?q=${v[f.id].lat},${v[f.id].lng}`);
