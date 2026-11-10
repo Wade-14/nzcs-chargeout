@@ -167,6 +167,10 @@ aside.jobs{background:var(--surface);border:1px solid var(--line);border-radius:
 body.locked .layout,body.locked .bar{display:none}
 body:not(.locked) .gate{display:none}
 .home{max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.folder-head{display:flex;margin-bottom:10px}
+.folder-title{margin:0 0 12px;font-family:var(--f-display);font-size:26px;font-weight:700}
+.tile.folder .ic{background:var(--forest-soft);color:var(--forest)}
+.tile .count-line{font-size:13px;color:var(--muted);font-weight:600}
 .home-sub{margin:0 0 6px;font-family:var(--f-display);font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--forest);font-weight:600}
 .tiles{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
 .tile{display:grid;grid-template-columns:48px 1fr;gap:12px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;text-decoration:none;color:var(--ink);min-height:110px}
@@ -290,13 +294,20 @@ body.drawer-open .drawer-shade{opacity:1;pointer-events:auto}
     <div id="install-help" hidden></div>
   </div>
 
-  <p class="home-sub">Choose a form</p>
-  <div class="tiles">
-    <a class="tile" href="#charge-out" id="tile-chargeout">
+  <div id="folder-root">
+    <p class="home-sub">Choose a folder</p>
+    <div class="tiles" id="folder-tiles"></div>
+  </div>
+  <div id="folder-view" hidden>
+    <div class="folder-head"><a class="btn btn-small back" href="#" id="folder-back">← All folders</a></div>
+    <h2 class="folder-title" id="folder-title"></h2>
+  <div class="tiles" id="form-tiles">
+    <a class="tile" href="#charge-out" id="tile-chargeout" data-form="chargeout">
       <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3h6v3H9z"/><path d="M8.5 11h7M8.5 15h4.5"/></svg></span>
       <span class="tt"><b>Charge Out</b><span class="hint">Hours, travel, KM and materials for a job, sent to Sam for invoicing.</span>
         <span class="badges"><span class="badge" id="tile-jobs" hidden></span><span class="badge draft" id="tile-draft" hidden>Form started</span></span></span>
     </a>
+  </div>
   </div>
 </div>
 
@@ -306,7 +317,7 @@ body.drawer-open .drawer-shade{opacity:1;pointer-events:auto}
       <small>NZ Conservation Services Ltd</small>
       <h1 id="generic-title">Form</h1>
     </div>
-    <div class="top-actions"><a class="btn btn-small back" href="#" id="generic-home">← All forms</a></div>
+    <div class="top-actions"><a class="btn btn-small back" href="#" id="generic-home">← Back</a></div>
   </header>
   <form id="generic-body" autocomplete="off" novalidate onsubmit="return false"></form>
 </div>
@@ -323,7 +334,7 @@ body.drawer-open .drawer-shade{opacity:1;pointer-events:auto}
         <h1>Charge Out</h1>
       </div>
       <div class="top-actions">
-        <a class="btn btn-small back" href="#" id="btn-home">← All forms</a>
+        <a class="btn btn-small back" href="#" id="btn-home">← Back</a>
         <span class="role" id="role-pill" hidden>Manager</span>
         <button type="button" id="btn-jobs" class="btn-small">Jobs in progress <span class="count" id="jobs-count">0</span></button>
         <span id="new-wrap"><button type="button" id="btn-new" class="btn-small">New form</button></span>
@@ -723,6 +734,7 @@ async function loadJobs(){
     jobsCache = res.jobs; if (res.role && auth && auth.role !== res.role){ auth.role = res.role; store.set(AUTH_KEY, auth); $("#role-pill").hidden = auth.role !== "manager"; }
     $("#jobs-count").textContent = jobsCache.length;
     const tj = $("#tile-jobs"); tj.hidden = !jobsCache.length; tj.textContent = plural(jobsCache.length, "job") + " in progress";
+    if (typeof updateFolderBadges === "function") updateFolderBadges();
     if (jobsView === "list") renderJobsList();
   }catch(err){ if (jobsView === "list") renderJobsList(err.message); }
 }
@@ -1019,12 +1031,51 @@ if (ENGINE){
     const a = document.createElement("a"); a.className = "tile"; a.href = f.hash; a.id = "tile-" + key;
     a.innerHTML = `<span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${f.icon}</svg></span>
       <span class="tt"><b>${esc(f.title)}</b><span class="hint">${esc(f.blurb)}</span><span class="badges"><span class="badge draft" id="tile-draft-${key}" hidden>Form started</span></span></span>`;
-    document.querySelector(".tiles").appendChild(a);
+    a.dataset.form = key;
+    document.querySelector("#form-tiles").appendChild(a);
+  });
+}
+/* Folders on the home screen. Each form key belongs to one folder. */
+const FOLDERS = [
+  {id:"jobs", title:"Job records", blurb:"Charge outs, spray diaries and kill sheets.", forms:["chargeout","spray","kill"],
+   icon:'<path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M8 12h8M8 15.5h5"/>'},
+  {id:"safety", title:"Health & safety", blurb:"Toolbox meetings and hazard reports.", forms:["toolbox","hazard"],
+   icon:'<path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>'},
+  {id:"vehicles", title:"Vehicles & equipment", blurb:"Vehicle and quad / LUV pre-start checks.", forms:["vehicle","quad"],
+   icon:'<path d="M3 15V9l2-4h9l3 4h3a1 1 0 0 1 1 1v5"/><path d="M3 15h18"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>'},
+];
+const folderOf = key => (FOLDERS.find(f => f.forms.includes(key)) || {}).id;
+// Any form not given a folder still shows up, in the last folder
+if (ENGINE) Object.keys(ENGINE.forms).forEach(k => { if (!folderOf(k)) FOLDERS[FOLDERS.length - 1].forms.push(k); });
+FOLDERS.forEach(f => {
+  const a = document.createElement("a"); a.className = "tile folder"; a.href = "#folder-" + f.id; a.id = "folder-" + f.id;
+  a.innerHTML = `<span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${f.icon}</svg></span>
+    <span class="tt"><b>${esc(f.title)}</b><span class="hint">${esc(f.blurb)}</span><span class="count-line">${plural(f.forms.length, "form")}</span>
+    <span class="badges"><span class="badge" id="folder-jobs-${f.id}" hidden></span><span class="badge draft" id="folder-draft-${f.id}" hidden>Form started</span></span></span>`;
+  $("#folder-tiles").appendChild(a);
+});
+function showFolder(id){
+  const f = FOLDERS.find(x => x.id === id);
+  $("#folder-root").hidden = !!f; $("#folder-view").hidden = !f;
+  if (!f) return;
+  $("#folder-title").textContent = f.title;
+  // Show this folder's forms, in the folder's order
+  const host = $("#form-tiles");
+  host.querySelectorAll(".tile").forEach(t => t.hidden = !f.forms.includes(t.dataset.form));
+  f.forms.forEach(k => { const t = $("#tile-" + k); if (t) host.appendChild(t); });
+}
+function updateFolderBadges(){
+  FOLDERS.forEach(f => {
+    const started = f.forms.some(k => k === "chargeout" ? !(formIsFree() && !finished) : (ENGINE && ENGINE.forms[k] && ENGINE.isStarted(k)));
+    $("#folder-draft-" + f.id).hidden = !started;
+    const jb = $("#folder-jobs-" + f.id), n = f.forms.includes("chargeout") ? jobsCache.length : 0;
+    jb.hidden = !n; jb.textContent = plural(n, "job") + " in progress";
   });
 }
 function route(){
   const h = location.hash;
   const view = h === "#charge-out" ? "chargeout" : ONEOFF[h] ? "generic" : "home";
+  if (view === "home") showFolder(h.startsWith("#folder-") ? h.slice(8) : null);
   document.body.classList.toggle("view-home", view === "home");
   document.body.classList.toggle("view-form", view === "chargeout");
   document.body.classList.toggle("view-generic", view === "generic");
@@ -1033,14 +1084,17 @@ function route(){
   if (view === "home"){
     closePanel(); $("#tile-draft").hidden = formIsFree() && !finished;
     if (ENGINE) Object.keys(ENGINE.forms).forEach(k => { $("#tile-draft-" + k).hidden = !ENGINE.isStarted(k); });
+    updateFolderBadges();
   }
   if (view === "chargeout") setTimeout(sizeCanvas, 30);
   window.scrollTo(0, 0);
 }
 window.addEventListener("hashchange", route);
-const goHome = e => { e.preventDefault(); history.replaceState(null, "", location.pathname); route(); };
-$("#btn-home").addEventListener("click", goHome);
-$("#generic-home").addEventListener("click", goHome);
+const goTo = hash => { history.replaceState(null, "", location.pathname + hash); route(); };
+const backToFolder = e => { e.preventDefault(); const key = location.hash === "#charge-out" ? "chargeout" : ONEOFF[location.hash]; const f = folderOf(key); goTo(f ? "#folder-" + f : ""); };
+$("#btn-home").addEventListener("click", backToFolder);
+$("#generic-home").addEventListener("click", backToFolder);
+$("#folder-back").addEventListener("click", e => { e.preventDefault(); goTo(""); });
 
 /* ---------- settings drawer: share the app ---------- */
 const APP_URL = "https://wade-14.github.io/nzcs-chargeout/";
