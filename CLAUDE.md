@@ -66,6 +66,7 @@ All one-off forms go to **team@ and operations@** (Wade and Gareth). Charge Out 
 - **Toolbox Meeting** (`#toolbox`): mirrors their paper form. Temperature Cold/Warm/Hot; risk Low/Medium/High; "Do you feel safe" Yes/No + explain. Follow-up questions appear when trained / PPE / plant / instructed is "No". Two office notices (bird flu, Matariki tractors) are text in `forms.js`; update when Wade sends new ones. Signatures per person + visitors; photos allowed.
 - **Spray Diary** (`#spray-diary`): equipment list (Knapsack 1–8, solo 1–3, quad boom / hand gun, drill and fill, cut and paste, LUV boom / hand gun, Other), PPE list. Chemicals and additives as rows: product, amount with **mL or g** switch, litres of water → rate shown as mL/L or g/L (amount ÷ litres of water). Wade saves PDFs to OneDrive (legal record).
 - **Kill Sheet** (`#kill-sheet`): "Are you…" Shooting / Counting / **Filling bait stations**. Animal tally grid: Deer, Possums, Pigs, Hares, Goats, Rats, Mice. Shooting/counting columns Seen / Shot / Confirmed kills (deer only). Bait-station mode columns Seen / Found under bait stations (possums, hares, rats, mice) + Bait station notes, and hides the gun-cleaning notice. **No photo option on the kill sheet.**
+- **Poison (Pesticide) Use** (`#poison-use`, Job Records): date/time, forest/farm/property (and company), location, person + staff (STAFF), poison used (typed), quantity applied (typed, with units), signature.
 - **Quad / LUV Check** (`#quad-check`): inspector from `STAFF` (no Sam), vehicles Quad 1–6, DR200 two-wheeler, Red LUV 570, Green LUV XP 1000. Tick list; unticked items print as "NOT TICKED" (sending is still allowed). Damage notes + photos. Service hours with "hours until service" / red "overdue". Red flagging like the vehicle check: unticked items and an overdue service print red and go in the "Needs attention" box.
 
 - **Hazard Report** (`#hazard-report`): date/time, location + map, name (STAFF + Sam), photo of hazard, hazard type (tick all that apply: unsafe track, underrunner, unsafe bridge, mine shaft, weather, tree felling, black ice, steep terrain, high wind, fences/gates, access tracks, stock, wild animals, other → explain), description, GPS taken Yes/No, precautions (notified team, flagging/taped area, GPS location taken, notified landowner, other → explain), mitigation, signature. File name uses the first part of the address.
@@ -77,7 +78,7 @@ All one-off forms go to **team@ and operations@** (Wade and Gareth). Charge Out 
 
 ## App-wide conventions
 
-- **Home screen folders** (`FOLDERS` in index.html): Charge Out Forms (Charge Out), Job Records (Spray Diary, Kill Sheet), Health & Safety Forms (Toolbox, Hazard Report, Incident Report), Audit Forms (Staff Audit), Vehicle & Equipment Checks (Vehicle Check, Quad check, Trailer Check). New forms must be added to a folder (an unlisted form falls into the last folder). Folder links are `#folder-<id>`; a form's Back button returns to its folder. Folder tiles show "jobs in progress" and "Form started" badges.
+- **Home screen folders** (`FOLDERS` in index.html): Charge Out Forms (Charge Out), Job Records (Spray Diary, Kill Sheet, Poison Use), Health & Safety Forms (Toolbox, Hazard Report, Incident Report), Audit Forms (Staff Audit), Vehicle & Equipment Checks (Vehicle Check, Quad check, Trailer Check). New forms must be added to a folder (an unlisted form falls into the last folder). Folder links are `#folder-<id>`; a form's Back button returns to its folder. Folder tiles show "jobs in progress" and "Form started" badges.
 
 - **Settings drawer** (☰ on the home screen): "Share the app" shares the live link + worker share code + install steps. The code comes from the Worker (`GET /api/share-code`, needs a valid code, only ever returns `WORKER_CODE`), so it is never in the public files.
 
@@ -103,4 +104,4 @@ All one-off forms go to **team@ and operations@** (Wade and Gareth). Charge Out 
 - Aerial map instead of street map: needs a LINZ Basemaps developer key (email basemaps@linz.govt.nz). On hold; the Google Maps link is used for now.
 - Later: a Microsoft 365 list for Sam with an "Entered in Xero" column; possible Xero integration.
 - Hazard Report alerts could reuse the same push alerts if Wade wants them.
-- More forms to come (poison use, others).
+- More forms to come.

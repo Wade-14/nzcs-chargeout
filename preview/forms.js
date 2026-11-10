@@ -579,6 +579,32 @@ FORMS.audit = {
     ]},
   ],
 };
+FORMS.poison = {
+  staffField: "staff",
+  hash: "#poison-use",
+  title: "Poison Use",
+  pdfTitle: "NZCS Poison (Pesticide) Use",
+  blurb: "Record of poison / pesticide used and how much was applied.",
+  sendTo: ["team@nzconservation.nz", "operations@nzconservation.nz"],
+  sendToLabel: "Wade and Gareth",
+  icon: '<path d="M10 3h4v3l3 4v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-9l3-4z"/><circle cx="12" cy="14" r="2.5"/><path d="M10 6h4"/>',
+  titleFrom: v => `${v.property || "Property"} ${dmy(v.when)}`,
+  sections: [
+    { title: "Details", fields: [
+      { id:"when", type:"datetime", label:"Date and time", required:true },
+      { id:"property", type:"text", label:"Forest / farm / property name (and company name)", placeholder:"Farm name, landowner or location", required:true },
+      { id:"location", type:"location", label:"Location" },
+      { id:"staff", type:"people", label:"Person filling out the form and staff included", required:true },
+    ]},
+    { title: "Poison used", fields: [
+      { id:"poison", type:"text", label:"Poison used / applied", required:true },
+      { id:"quantity", type:"text", label:"Quantity applied", placeholder:"Amount and units", required:true },
+    ]},
+    { title: "Sign off", fields: [
+      { id:"signatures", type:"signatures", label:"Signature", required:true },
+    ]},
+  ],
+};
 window.NZCS_ONEOFF = FORMS;
 
 /* ---------------- State (memory only) ---------------- */
