@@ -362,6 +362,7 @@ const FORMS = {
       ]},
       { title: "Damage", fields: [
         { id:"damage", type:"textarea", label:"Notes about any damage on the trailer" },
+        { id:"photos", type:"photos", label:"Photos of any damage (optional)" },
       ]},
       { title: "Sign off", fields: [
         { type:"notice", text:"If anything needs attention, please see management." },

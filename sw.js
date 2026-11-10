@@ -1,5 +1,5 @@
 // Keeps the app working with no signal: serves saved copies, refreshes them when online.
-const CACHE = "nzcs-chargeout-v30";
+const CACHE = "nzcs-chargeout-v31";
 const FILES = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "vendor/jspdf.umd.min.js", "vendor/jspdf.plugin.autotable.min.js", "forms.js", "vendor/logo.js", "icon-192-maskable.png", "icon-512-maskable.png"];
 self.addEventListener("install", e => {
   // Cache each file on its own so one missing file can't stop the rest.
