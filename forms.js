@@ -677,14 +677,14 @@ function emailBody(){
   L.push("", "Full form attached as PDF.");
   return L.join("\n");
 }
-const mailHref = () => { const form = FORMS[current], v = values(); return `mailto:${form.sendTo.join(",")}?subject=${encodeURIComponent(`${form.pdfTitle} - ${form.titleFrom(v)}`)}&body=${encodeURIComponent(emailBody())}`; };
+const mailHref = () => { const form = FORMS[current], v = values(); return `mailto:${form.sendTo.join(",")}?subject=${encodeURIComponent(`${form.pdfTitle} - ${form.titleFrom(v)}`)}&body=${encodeURIComponent("Form attached as PDF.")}`; };
 async function share(){
   if (!validate()) return status("Some details are missing. Check the fields marked in red.", true);
   let file; try{ file = makeFile(); }catch(err){ return status(err.message, true); }
   const to = FORMS[current].sendTo.join(", ");
   try{ navigator.clipboard && navigator.clipboard.writeText(to).catch(() => {}); }catch(e){}
   if (canShareFiles){
-    try{ await navigator.share({files:[file], title:file.name.replace(/\.pdf$/, ""), text:"To: " + to + "\n\n" + emailBody()}); status("Shared. Check it went to " + to + ". Tap Clear form when you're done."); }
+    try{ await navigator.share({files:[file], title:file.name.replace(/\.pdf$/, "")}); status("Shared. Check it went to " + to + ". Tap Clear form when you're done."); }
     catch(err){ if (err && err.name === "AbortError") status("Share cancelled.", true); else { downloadFile(file); status("Sharing didn't work here, so the PDF was downloaded. Use Open email and attach it.", true); } }
   } else {
     downloadFile(file); status("PDF downloaded. Opening an email; attach the PDF from your Downloads.");

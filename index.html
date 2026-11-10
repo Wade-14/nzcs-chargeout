@@ -898,7 +898,7 @@ async function sharePdf(){
   let file; try{ file = makeFile(finished); }catch(err){ return sendStatus(err.message, true); }
   try{ navigator.clipboard && navigator.clipboard.writeText(SEND_TO).catch(() => {}); }catch(e){}
   if (canShareFiles){
-    try{ await navigator.share({files:[file], title:sheetTitle(finished), text:"To: " + SEND_TO + "\n\n" + emailBody(finished)}); sendStatus("Shared. Check the email went to " + SEND_TO + "."); }
+    try{ await navigator.share({files:[file], title:sheetTitle(finished)}); sendStatus("Shared. Check the email went to " + SEND_TO + "."); }
     catch(err){ if (err && err.name === "AbortError") sendStatus("Share cancelled.", true); else { downloadFile(file); sendStatus("Sharing didn't work here, so the PDF was downloaded. Use Open email to Sam and attach it.", true); } }
   } else {
     downloadFile(file); sendStatus("PDF downloaded. Opening an email to Sam; attach the PDF from your Downloads.");
@@ -918,7 +918,7 @@ function emailBody(job){
   L.push("", "Job complete and ready to charge: Yes", "Signed charge out sheet attached as PDF.");
   return L.join("\n");
 }
-const mailHref = job => `mailto:${SEND_TO}?subject=${encodeURIComponent(sheetTitle(job))}&body=${encodeURIComponent(emailBody(job))}`;
+const mailHref = job => `mailto:${SEND_TO}?subject=${encodeURIComponent(sheetTitle(job))}&body=${encodeURIComponent("Signed charge out sheet attached as PDF.")}`;
 function copyEmail(){
   if (!finished) return;
   const txt = "Subject: " + sheetTitle(finished) + "\n\n" + emailBody(finished);
