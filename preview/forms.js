@@ -452,6 +452,122 @@ FORMS.incidentInv = {
   titleFrom: incidentTitle,
   sections: INCIDENT_EMPLOYEE.map(sec => Object.assign({}, sec, {locked:true})).concat(INCIDENT_INVESTIGATION),
 };
+/* Staff audit: sections can be left out of the audit; every "No" asks for an action point. */
+const YNA = ["Yes", "No", "N/A"];
+// A Yes/No question plus an "Action point" box that appears when the answer is No
+const ap = (id, label, show, opts) => [
+  { id, type:"choice", options: opts || YN, alertIf:"No", label, showIf: show },
+  { id: id + "AP", type:"textarea", label:"Action point", showIf: v => (!show || show(v)) && v[id] === "No" },
+];
+const inAudit = key => v => v[key] === "Yes";
+const method = list => v => v.fieldIn === "Yes" && list.includes(v.workMethod);
+const TRAP = ["Trapping", "Toxins", "Bait stations", "Detoxing"];
+FORMS.audit = {
+  staffField: "staff",
+  hash: "#staff-audit",
+  title: "Staff Audit",
+  pdfTitle: "NZCS Staff Audit",
+  blurb: "Audit a staff member's preparation, PPE, safe work practices and field work method.",
+  alertTitle: "Action points",
+  alertTag: "(action point)",
+  sendTo: ["team@nzconservation.nz", "operations@nzconservation.nz"],
+  sendToLabel: "Wade and Gareth",
+  icon: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3h6v3H9z"/><path d="M8.5 12l2 2 4-4"/><path d="M8.5 17h7"/>',
+  titleFrom: v => `${((v.location && v.location.address) || "").split(",")[0].trim() || v.workMethod || "Audit"} ${dmy(v.when)}`,
+  extraPeople: ["Jimmy Sycamore"],
+  sections: [
+    { title: "Audit information", fields: [
+      { id:"when", type:"datetime", label:"Date and time", required:true },
+      { id:"location", type:"location", label:"Location" },
+      { id:"auditor", type:"people", label:"Auditor name", options:["Toby Haliday","Wade McSoriley","Gareth Coyle","Tad Schultz"], other:true, required:true },
+      { id:"auditorOther", type:"text", label:"Other auditor's name", showIf:v => (v.auditor||[]).includes("Other") },
+      { id:"staff", type:"people", label:"Staff name", other:true, required:true },
+      { id:"staffOther", type:"text", label:"Other staff member: who, and where they are from", showIf:v => (v.staff||[]).includes("Other") },
+    ]},
+    { title: "Staff preparation", fields: [
+      { id:"prepIn", type:"choice", options:YN, label:"Is this area part of the audit?" },
+      { type:"notice", text:"This section checks the staff member is organised, participates, and understands their activity for the day.", showIf:inAudit("prepIn") },
+      { id:"prepNotes", type:"textarea", label:"Notes", showIf:inAudit("prepIn") },
+      ...ap("toolboxMtg", "Did the staff member take part in the toolbox meeting?", inAudit("prepIn")),
+      ...ap("organised", "Is organised for the day's activities?", inAudit("prepIn")),
+      ...ap("understandsJob", "Staff member understands their job for the day?", inAudit("prepIn")),
+      ...ap("consents", "Staff member knows of any conditions on the consents for working on the property?", inAudit("prepIn")),
+      ...ap("knowsHazards", "Staff member knows of any hazards in the area?", inAudit("prepIn")),
+    ]},
+    { title: "Licences, equipment and PPE", fields: [
+      { id:"ppeIn", type:"choice", options:YN, label:"Is this area part of the audit?" },
+      { type:"notice", text:"This section checks the staff member has the correct equipment for the job and understands how to use it.", showIf:inAudit("ppeIn") },
+      { id:"ppeNotes", type:"textarea", label:"Notes", showIf:inAudit("ppeIn") },
+      ...ap("clothing", "Correct clothing for the day, sufficient for the day's activities (vest, hi-vis shirt, hat)?", inAudit("ppeIn")),
+      ...ap("footwear", "Wearing correct footwear, in good condition?", inAudit("ppeIn")),
+      ...ap("glasses", "Has protective safety glasses with them?", inAudit("ppeIn")),
+      ...ap("csl", "Carrying their CSL / certified handler documentation? (if required)", inAudit("ppeIn"), YNA),
+      ...ap("plb", "Has a PLB, or access to one, and can explain how to use it?", inAudit("ppeIn")),
+      ...ap("gps", "Has a GPS and can explain the basic features (track logs, marking points etc)? (if required)", inAudit("ppeIn"), YNA),
+      ...ap("radio", "Has a radio on the correct channel, charged, and can use it correctly? (if required)", inAudit("ppeIn"), YNA),
+    ]},
+    { title: "Safe work practices", fields: [
+      { id:"safeIn", type:"choice", options:YN, label:"Is this area part of the audit?" },
+      { type:"notice", text:"This section checks the staff member is working in a safe and efficient manner.", showIf:inAudit("safeIn") },
+      { id:"safeNotes", type:"textarea", label:"Notes", showIf:inAudit("safeIn") },
+      ...ap("radioCheck", "Does a radio check before beginning work? (if required)", inAudit("safeIn"), YNA),
+      ...ap("preStart", "Does a pre-start on the vehicle before using it?", inAudit("safeIn")),
+      ...ap("communicates", "Communicates with other team members throughout the day?", inAudit("safeIn")),
+      ...ap("hivis", "Keeps hi-vis on throughout the day?", inAudit("safeIn")),
+      ...ap("hydrated", "Keeps hydrated and eats during the day?", inAudit("safeIn")),
+      ...ap("otherPpe", "Wears other PPE when required?", inAudit("safeIn")),
+    ]},
+    { title: "Field work", fields: [
+      { id:"fieldIn", type:"choice", options:YN, label:"Is this area part of the audit?" },
+      { type:"notice", text:"This section reviews the staff member's knowledge and understanding of the work method.", showIf:inAudit("fieldIn") },
+      { id:"fieldNotes", type:"textarea", label:"Notes", showIf:inAudit("fieldIn") },
+      { id:"workMethod", type:"select", label:"Work method", showIf:inAudit("fieldIn"),
+        options:["Trapping","Toxins","Bait stations","Detoxing","Planting","Spraying","Chainsaw / scrub bar operation","Quad bike / LUV operation","Weed control"] },
+      // Trapping, toxins, bait stations, detoxing
+      { id:"workType", type:"choice", label:"Work type", options:["Deploying","Checking / servicing","Removing"], showIf:method(TRAP) },
+      ...ap("trapSupplies", "Carrying sufficient traps and bait, or bait stations and toxins?", method(TRAP)),
+      ...ap("trapHabitat", "Identifying the best habitat for deployment and trying to get the best coverage?", method(TRAP)),
+      ...ap("trapTechnique", "Technique is as per best practice / SOPs (good placement, visibility, correct height, easily accessible)?", method(TRAP)),
+      ...ap("trapMarkers", "Using flagging tape or triangle markers appropriately?", method(TRAP)),
+      ...ap("trapEfficient", "Shows signs of working in an efficient manner?", method(TRAP)),
+      ...ap("trapCarcass", "Disposal of carcasses is out of the public eye (not on fences, in fields etc)?", method(TRAP)),
+      // Planting
+      ...ap("plantTechnique", "Correct planting technique (planted at correct depth, no roots showing, grass and weeds cleared around the base)?", method(["Planting"]), YNA),
+      ...ap("plantSpecies", "Aware of the species being planted and putting them in the best places for survival?", method(["Planting"])),
+      ...ap("plantMats", "Weed mats, guards and stakes installed correctly if required?", method(["Planting"])),
+      // Spraying
+      ...ap("sprayPpe", "Wearing correct PPE for spraying (cape, overalls, gloves, hat, glasses, boots)?", method(["Spraying"])),
+      ...ap("mixPpe", "Wearing correct PPE for mixing chemicals (gloves, glasses, respirator)?", method(["Spraying"])),
+      ...ap("mixing", "Mixing done appropriately (flat ground, spill sheet or similar to contain spills, triple rinsing of containers and knapsacks, safe handling of chemicals)?", method(["Spraying"])),
+      ...ap("mixRatio", "Knows the mixing ratio of chemicals for the day?", method(["Spraying"])),
+      ...ap("sprayManner", "Spraying in an appropriate manner for the job (minimal spray drift, 300 mm from target; release spraying 1 m around each side of the plant)?", method(["Spraying"])),
+      ...ap("sprayDiary", "Fills in spray diary records at the end of each day and is aware of requirements (wind, weather, sensitive areas, notification, withholding periods)?", method(["Spraying"])),
+      ...ap("knapsackClean", "Keeps knapsack clean and triple rinsed at least once a week when changing chemicals?", method(["Spraying"])),
+      // Chainsaw / scrub bar
+      ...ap("sawPpe", "Has appropriate PPE for the day (helmet, earmuffs, chaps, steel cap boots, safety glasses)?", method(["Chainsaw / scrub bar operation"])),
+      { type:"notice", title:"Chainsaw safety features (9)", text:"On / off switch, throttle lock, rear hand guard, glove / mitt, chain brake, chain catcher, spark arrestor, anti-vibration mounts, muffler. Scrub bars have 4 safety features.", showIf:method(["Chainsaw / scrub bar operation"]) },
+      ...ap("sawFeatures", "Can identify the safety features of the chainsaw (9) or scrub bar (4) and inspects them daily?", method(["Chainsaw / scrub bar operation"])),
+      ...ap("sawKit", "Has tool belt, fire extinguisher, small first aid kit, and enough water for the day?", method(["Chainsaw / scrub bar operation"])),
+      ...ap("sawRefuel", "Refuels in a safe space and in the correct manner (cone set up if required, lets the tool cool before refuelling)?", method(["Chainsaw / scrub bar operation"])),
+      ...ap("sawSop", "Uses the tool according to best practice / SOPs?", method(["Chainsaw / scrub bar operation"])),
+      ...ap("sawMaint", "Does maintenance on the tool and cleans it regularly?", method(["Chainsaw / scrub bar operation"])),
+      // Quad / LUV
+      ...ap("atvPrestart", "Takes part in pre-start checks daily?", method(["Quad bike / LUV operation"])),
+      ...ap("atvTrained", "Has relevant qualifications or in-house training in off-road vehicle use?", method(["Quad bike / LUV operation"])),
+      ...ap("atvBestPractice", "Aware of best practice for driving (two-foot driving for the LUV, active riding for quads)?", method(["Quad bike / LUV operation"])),
+      ...ap("atvRoutes", "Picks the best routes for travel and avoids hazardous situations?", method(["Quad bike / LUV operation"])),
+      // Weed control
+      ...ap("weedSpecies", "Aware of the weed species targeted today and knows their key identifying features?", method(["Weed control"])),
+      ...ap("weedMethod", "Using the best work method for the species targeted?", method(["Weed control"])),
+      ...ap("weedChemical", "Using the best chemical for treating the target species?", method(["Weed control"])),
+      { id:"methodComments", type:"textarea", label:"Any further questions or comments from the auditor or staff member?", showIf:v => v.fieldIn === "Yes" && !!v.workMethod },
+    ]},
+    { title: "Sign off", fields: [
+      { id:"signatures", type:"signatures", label:"Signature", required:true },
+      { id:"toAddress", type:"textarea", label:"Area to be addressed" },
+    ]},
+  ],
+};
 window.NZCS_ONEOFF = FORMS;
 
 /* ---------------- State (memory only) ---------------- */
@@ -561,7 +677,7 @@ function fieldHTML(form, f, v){
       return `<div class="field"><span class="label">${esc(f.label)}${req} <span class="hint">Tick all that apply</span></span><div class="chips" role="group" aria-label="${esc(f.label)}">` +
         f.options.map((o,i) => `<button type="button" class="chip multi" id="${id}-${i}" data-gm="${f.id}" data-val="${esc(o)}" aria-pressed="${(v[f.id]||[]).includes(o)}">${esc(o)}</button>`).join("") + `</div>${err}</div>`;
     case "people": {
-      const names = peopleList(form).concat(f.other ? ["Other"] : []);
+      const names = (f.options || peopleList(form)).concat(f.other ? ["Other"] : []);
       const picked = v[f.id] || [];
       return `<div class="field"><span class="label" id="${id}-lbl">${esc(f.label)}${req}</span>
         <details class="dd" id="${id}-dd"><summary aria-labelledby="${id}-lbl">${picked.length ? esc(picked.join(", ")) : `<span class="ph">Tick who was there</span>`}</summary>
@@ -925,7 +1041,7 @@ function buildPDF(){
   const RED = [179,38,30];
   const flagged = alertLabels(form, v);
   if (flagged.length){
-    doc.autoTable(Object.assign({}, base, {startY:y, body:[[{content:"Needs attention - please see management:\n" + flagged.map(t => "- " + t).join("\n"), styles:{textColor:RED, fontStyle:"bold", fillColor:[251,228,226], lineColor:RED, lineWidth:0.4}}]], columnStyles:{0:{cellWidth:"auto"}}}));
+    doc.autoTable(Object.assign({}, base, {startY:y, body:[[{content:(form.alertTitle || "Needs attention - please see management") + ":\n" + flagged.map(t => "- " + t).join("\n"), styles:{textColor:RED, fontStyle:"bold", fillColor:[251,228,226], lineColor:RED, lineWidth:0.4}}]], columnStyles:{0:{cellWidth:"auto"}}}));
     y = doc.lastAutoTable.finalY + 10;
   }
   const links = [];
@@ -943,7 +1059,7 @@ function buildPDF(){
       if (f.type === "derived"){ const t = f.compute(v); if (!t) return;
         if (f.alertWhen && f.alertWhen(v)) rows.push([{content:f.label, styles:{textColor:RED}}, {content:t, styles:{textColor:RED, fontStyle:"bold", fillColor:[251,228,226]}}]);
         else rows.push([f.label, t]); return; }
-      if (isAlert(f, v)) rows.push([{content:f.label, styles:{textColor:RED}}, {content:answerText(f, v) + "  (needs attention)", styles:{textColor:RED, fontStyle:"bold", fillColor:[251,228,226]}}]);
+      if (isAlert(f, v)) rows.push([{content:f.label, styles:{textColor:RED}}, {content:answerText(f, v) + "  " + (form.alertTag || "(needs attention)"), styles:{textColor:RED, fontStyle:"bold", fillColor:[251,228,226]}}]);
       else rows.push([f.label, answerText(f, v)]);
       if (f.type === "location" && v[f.id].lat != null) links.push(`https://www.google.com/maps?q=${v[f.id].lat},${v[f.id].lng}`);
     });
