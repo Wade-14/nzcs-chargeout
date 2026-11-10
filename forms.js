@@ -331,7 +331,7 @@ const FORMS = {
         { id:"location", type:"location", label:"Location" },
         { id:"person", type:"person", label:"Person filling out the form", required:true },
         { id:"trailer", type:"select", label:"Trailer being checked", required:true,
-          options:["Jobmate 7x4 143G7","Jobmate 7x4 cage trailer 97F53","Red Bryford trailer P301G","Bryford 846M3","Bryford tip trailer 6BR70","T Choice T989U","Single horse float 23F21","Double horse float","Other"] },
+          options:["Jobmate 7x4 143G7","Jobmate 7x4 cage trailer 97F53","Red Briford trailer P301G","Briford 846M3","Briford tip trailer 6BR70","T Choice T989U","Single horse float 23F21","Double horse float","Other"] },
         { id:"trailerOther", type:"text", label:"Which trailer? (make, type and rego)", showIf:v => v.trailer === "Other" },
       ]},
       { title: "Registration and WOF", fields: [
@@ -361,8 +361,7 @@ const FORMS = {
         { id:"trailerBrake", type:"choice", options:["Yes","No","Not applicable"], alertIf:"No", label:"Trailer brake functional (if applicable)?" },
       ]},
       { title: "Damage", fields: [
-        { id:"damage", type:"textarea", label:"Describe any damage" },
-        { id:"photos", type:"photos", label:"Photos of any damage (optional)" },
+        { id:"damage", type:"textarea", label:"Notes about any damage on the trailer" },
       ]},
       { title: "Sign off", fields: [
         { type:"notice", text:"If anything needs attention, please see management." },
