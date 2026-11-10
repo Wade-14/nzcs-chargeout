@@ -92,6 +92,7 @@ All one-off forms go to **team@ and operations@** (Wade and Gareth). Charge Out 
 ## Not done yet / ideas
 
 - **Automatic email sending** (one tap, no share menu): waiting on Wade's IT company to set up a shared mailbox `forms@nzconservation.nz` + a Microsoft Graph app allowed to send as it. Then the Worker sends the PDF via Graph. A note for IT was written (Claude Doc "NZCS Forms app – email sending request for IT").
+- Once automatic sending exists: Hazard Reports should alert Wade and Gareth immediately (agreed, waiting on IT).
 - Aerial map instead of street map: needs a LINZ Basemaps developer key (email basemaps@linz.govt.nz). On hold; the Google Maps link is used for now.
 - Later: a Microsoft 365 list for Sam with an "Entered in Xero" column; possible Xero integration.
 - More forms to come (accident/incident, hazard, vehicle check, poison use).
