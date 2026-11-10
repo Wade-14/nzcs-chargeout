@@ -163,7 +163,6 @@ const FORMS = {
       ]},
       { title: "Wrap up", fields: [
         { id:"comments", type:"textarea", label:"Any comments about the job or problems encountered" },
-        { id:"photos", type:"photos", label:"Photos (optional)" },
         { id:"signatures", type:"signatures", label:"Signature", required:true },
       ]},
     ],
