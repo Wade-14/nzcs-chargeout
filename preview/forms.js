@@ -597,8 +597,8 @@ FORMS.poison = {
       { id:"staff", type:"people", label:"Person filling out the form and staff included", required:true },
     ]},
     { title: "Poison used", fields: [
-      { id:"poison", type:"text", label:"Poison used / applied", required:true },
-      { id:"quantity", type:"text", label:"Quantity applied", placeholder:"Amount and units", required:true },
+      { id:"poisons", type:"productRows", label:"Poison used / applied and quantity", noun:"poison", required:true,
+        options:["Feratox pills","Feratox bio bags","Feratox paste","Brodifacoum","Magtoxin","Double Tap","Contrac","Storm","Pindone","Other"] },
     ]},
     { title: "Sign off", fields: [
       { id:"signatures", type:"signatures", label:"Signature", required:true },
@@ -618,6 +618,7 @@ const blankValues = form => {
               f.type === "signatures" ? [{name:"", sig:""}] :
               f.type === "mixes" ? [{product:"", ml:"", litres:"", unit:"mL"}] :
               f.type === "tally" ? {} :
+              f.type === "productRows" ? [{product:"", other:"", qty:""}] :
               f.type === "checklist" ? [] :
               f.type === "datetime" ? nowLocal() :
               f.type === "location" ? {address:"", lat:null, lng:null} :
@@ -738,6 +739,15 @@ function fieldHTML(form, f, v){
           ${s.name && !names.includes(s.name) || s.other ? `<input type="text" id="${id}-${i}-other" data-gso="${f.id}" data-i="${i}" placeholder="Visitor's name and company" value="${esc(names.includes(s.name) ? "" : s.name)}">` : ""}
           <div class="sig-wrap small"><div class="sig-line"></div><canvas data-gsig="${f.id}" data-i="${i}"></canvas><div class="sig-hint" ${s.sig ? "hidden" : ""}>Sign here</div></div>
         </div>`).join("") + `</div><button type="button" class="btn-small btn-ghost" data-sigadd="${f.id}" style="justify-self:start">+ Add signature</button>${err}</div>`;
+    }
+    case "productRows": {
+      const list = v[f.id] || [];
+      return `<div class="field"><span class="label">${esc(f.label)}${req}</span><div class="mixes">` + list.map((r,i) => `<div class="prow">
+        <div class="field"><label for="${id}-${i}-product">${esc(f.noun === "poison" ? "Poison" : "Product")}</label><select id="${id}-${i}-product" data-gr="${f.id}" data-i="${i}" data-k="product"><option value="">Pick one</option>${f.options.map(o => `<option ${r.product === o ? "selected" : ""}>${esc(o)}</option>`).join("")}</select></div>
+        ${r.product === "Other" ? `<div class="field"><label for="${id}-${i}-other">Which product?</label><input type="text" id="${id}-${i}-other" data-gr="${f.id}" data-i="${i}" data-k="other" autocomplete="off" value="${esc(r.other)}"></div>` : ""}
+        <div class="field"><label for="${id}-${i}-qty">Quantity applied</label><input type="text" id="${id}-${i}-qty" data-gr="${f.id}" data-i="${i}" data-k="qty" autocomplete="off" value="${esc(r.qty)}" placeholder="Amount and units"></div>
+        ${list.length > 1 ? `<button type="button" class="btn-small btn-ghost prow-del" data-grdel="${f.id}" data-i="${i}">Remove</button>` : ""}
+      </div>`).join("") + `</div><button type="button" class="btn-small btn-ghost" data-gradd="${f.id}" style="justify-self:start">+ Add another ${esc(f.noun || "product")}</button>${err}</div>`;
     }
     case "mixes": {
       const list = v[f.id] || [];
@@ -904,6 +914,7 @@ function bind(){
     if (t.dataset.g){ v[t.dataset.g] = t.value; const er = $(`#g-${t.dataset.g}-err`); if (er) er.hidden = true; updateDerived(); }
     else if (t.dataset.gl){ v[t.dataset.gl].address = t.value; }
     else if (t.dataset.gso){ const s = v[t.dataset.gso][+t.dataset.i]; s.name = t.value; s.other = true; }
+    else if (t.dataset.gr){ v[t.dataset.gr][+t.dataset.i][t.dataset.k] = t.value; const er = $(`#g-${t.dataset.gr}-err`); if (er) er.hidden = true; }
     else if (t.dataset.gt){ const T = v[t.dataset.gt]; if (t.value === "") delete T[t.dataset.key]; else T[t.dataset.key] = t.value; }
     else if (t.dataset.gx){
       const m = v[t.dataset.gx][+t.dataset.i]; m[t.dataset.k] = t.value;
@@ -921,6 +932,8 @@ function bind(){
       const ddId = t.closest("details").id;
       rerenderIfShapeChanged();
       const dd = document.getElementById(ddId); if (dd) dd.open = true;   // keep the list open while ticking
+    } else if (t.dataset.gr && t.dataset.k === "product"){
+      v[t.dataset.gr][+t.dataset.i].product = t.value; const y = window.scrollY; render(); window.scrollTo(0, y);
     } else if (t.dataset.gsn){
       const s = v[t.dataset.gsn][+t.dataset.i];
       if (t.value === "__other"){ s.other = true; s.name = ""; } else { s.other = false; s.name = t.value; }
@@ -958,6 +971,8 @@ function bind(){
       const out = $(`#g-${t.dataset.mixunit}-${t.dataset.i}-rate`); if (out) out.textContent = mixRateText(m) || "–";
       return;
     }
+    if (t.dataset.gradd){ v[t.dataset.gradd].push({product:"", other:"", qty:""}); render(); return; }
+    if (t.dataset.grdel){ v[t.dataset.grdel].splice(+t.dataset.i, 1); render(); return; }
     if (t.dataset.mixdel){ v[t.dataset.mixdel].splice(+t.dataset.i, 1); render(); return; }
     if (t.dataset.photodel){ v[t.dataset.photodel].splice(+t.dataset.i, 1); render(); return; }
     if (t.dataset.locate) return locate(t.dataset.locate, t);
@@ -1038,6 +1053,7 @@ function validate(){
     if (!f.required || (f.showIf && !f.showIf(v))) return;
     let ok = true;
     if (f.type === "signatures") ok = v[f.id].some(x => x.sig);
+    else if (f.type === "productRows") ok = v[f.id].some(r => r.product && String(r.qty).trim() && (r.product !== "Other" || String(r.other).trim()));
     else if (Array.isArray(v[f.id])) ok = v[f.id].length > 0;
     else ok = String(v[f.id] || "").trim() !== "";
     if (!ok){ const er = $(`#g-${f.id}-err`); if (er) er.hidden = false; if (!first) first = er; }
@@ -1053,6 +1069,7 @@ function answerText(f, v){
   if (f.type === "date") return dmy(a);
   if (f.type === "month") return a ? a.split("-").reverse().join("-") : "";
   if (f.type === "tally") return f.rows.map(r => r.name + ": " + r.cols.filter(c => tallyCols(f, v).includes(c)).map(c => `${c.toLowerCase()} ${a[r.name + "|" + c] || 0}`).join(", ")).join("\n");
+  if (f.type === "productRows") return (a || []).filter(r => r.product).map(r => `${r.product === "Other" ? (r.other || "Other") : r.product}: ${r.qty || "quantity not given"}`).join("\n");
   if (f.type === "mixes") return usedMixes(a).map(mixLine).join("\n");
   if (f.type === "location") return [a.address, a.lat != null ? `GPS ${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}` : ""].filter(Boolean).join("\n");
   if (f.type === "derived") return f.compute(v);
