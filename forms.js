@@ -371,6 +371,87 @@ const FORMS = {
     ],
   },
 };
+/* Incident / accident report: the employee's part is submitted and stored; a manager completes the investigation. */
+const INCIDENT_EMPLOYEE = [
+  { title: "Employee details", fields: [
+    { id:"when", type:"datetime", label:"Date and time of the event", required:true },
+    { id:"location", type:"location", label:"Location" },
+    { id:"involved", type:"people", label:"Person(s) involved", other:true, required:true },
+    { id:"involvedOther", type:"textarea", label:"Name(s) of other people involved", showIf:v => (v.involved||[]).includes("Other") },
+    { id:"phone", type:"text", label:"Phone number" },
+    { id:"position", type:"text", label:"Position in the company" },
+    { id:"company", type:"fixed", label:"Company", value:"NZ Conservation Services Ltd" },
+    { id:"office", type:"fixed", label:"Office location", value:"21 Roberts Rd, Drummond 9683" },
+  ]},
+  { title: "Event information", fields: [
+    { id:"event", type:"select", label:"Event type", required:true,
+      options:["Close call","New hazard","Injury","Damage","Complaint","Access","Toxins","Trapping","Opportunity / observation","Environmental","Vehicle accident / incident"] },
+    { id:"project", type:"text", label:"Project / job", placeholder:"Farm name, landowner or location" },
+    { id:"describe", type:"textarea", label:"Full description (enough detail that anyone reading this can understand what happened)", required:true },
+    { id:"didAbout", type:"textarea", label:"What did you do about it?" },
+    { id:"stillToDo", type:"textarea", label:"What still needs to be done?" },
+    { id:"learned", type:"textarea", label:"What did you learn from it? What can be improved?" },
+  ]},
+  { title: "Injury or illness", fields: [
+    { id:"injury", type:"textarea", label:"Describe the injury or illness" },
+    { id:"severity", type:"textarea", label:"Describe the size / depth / severity / body part" },
+    { id:"treatment", type:"select", label:"Treatment provided", options:["No treatment, report only","First aid","Doctor"] },
+    { id:"clinic", type:"text", label:"What clinic did you attend?", showIf:v => v.treatment === "Doctor" },
+    { id:"treatmentDetails", type:"textarea", label:"Treatment details and outcome" },
+    { id:"returnDate", type:"date", label:"If unfit to work, what date will you return?" },
+  ]},
+  { title: "Property, animal or environmental damage", fields: [
+    { id:"damaged", type:"textarea", label:"What was damaged or harmed?" },
+    { id:"belongsTo", type:"text", label:"Who does it belong to?" },
+  ]},
+  { title: "Employee sign off", fields: [
+    { type:"notice", text:"Please complete and send this form within 24 hours." },
+    { id:"empSignatures", type:"signatures", label:"Employee signature", required:true },
+  ]},
+];
+const INCIDENT_INVESTIGATION = [
+  { title: "Investigation (employer)", fields: [
+    { id:"contacted", type:"multi", label:"Who needs to be contacted?",
+      options:["Family / emergency contact","WorkSafe","Police","Toby Haliday","Gareth Coyle or Wade McSoriley (management)","Environment Southland","Emergency services","Other","Not needed"] },
+    { id:"contactDetails", type:"textarea", label:"Details, and when they were contacted" },
+    { id:"witnesses", type:"textarea", label:"Name(s) and contact details of any witnesses" },
+    { id:"classification", type:"choice", label:"Was it an accident, incident or near miss?", options:["Accident","Incident","Near miss"] },
+    { id:"training", type:"choice", options:YN, label:"Was relevant training provided?" },
+    { id:"trainingWhat", type:"textarea", label:"What training has been undertaken?", showIf:v => v.training === "Yes" },
+    { id:"controls", type:"textarea", label:"What controls were in place, and why didn't they work?" },
+    { id:"actions", type:"textarea", label:"What action was taken / changes made to reduce or eliminate the chance of it happening again?" },
+    { id:"future", type:"textarea", label:"What future action is to be taken?" },
+    { id:"invComments", type:"textarea", label:"Comments" },
+    { id:"invWhen", type:"datetime", label:"Investigation date and time" },
+    { id:"mgrSignatures", type:"signatures", label:"Manager signature", required:true },
+  ]},
+];
+const incidentTitle = v => `${v.project || v.event || "Incident"} ${dmy(v.when)}`;
+FORMS.incident = {
+  staffField: "involved",
+  hash: "#incident-report",
+  title: "Incident / Accident Report",
+  pdfTitle: "NZCS Incident / Accident Report",
+  blurb: "Report an injury, close call, damage or other event. Managers are alerted to investigate.",
+  mode: "submit",
+  sendTo: [], sendToLabel: "the managers",
+  icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v6"/><circle cx="12" cy="16.5" r=".6" fill="currentColor"/>',
+  titleFrom: incidentTitle,
+  sections: INCIDENT_EMPLOYEE,
+};
+FORMS.incidentInv = {
+  staffField: "involved",
+  hash: "#investigate",
+  noTile: true,
+  title: "Incident Investigation",
+  pdfTitle: "NZCS Incident / Accident Investigation",
+  mode: "investigate",
+  sendTo: ["team@nzconservation.nz", "operations@nzconservation.nz", "toby@nzconservation.nz"],
+  sendToLabel: "Wade, Gareth and Toby",
+  extraPeople: ["Sam Haliday"],
+  titleFrom: incidentTitle,
+  sections: INCIDENT_EMPLOYEE.map(sec => Object.assign({}, sec, {locked:true})).concat(INCIDENT_INVESTIGATION),
+};
 window.NZCS_ONEOFF = FORMS;
 
 /* ---------------- State (memory only) ---------------- */
@@ -386,7 +467,8 @@ const blankValues = form => {
               f.type === "tally" ? {} :
               f.type === "checklist" ? [] :
               f.type === "datetime" ? nowLocal() :
-              f.type === "location" ? {address:"", lat:null, lng:null} : "";
+              f.type === "location" ? {address:"", lat:null, lng:null} :
+              f.type === "fixed" ? f.value : "";
   }));
   return v;
 };
@@ -432,6 +514,8 @@ function fieldHTML(form, f, v){
   const req = f.required ? ` <span class="hint">(required)</span>` : "";
   const err = f.id ? `<span class="err" id="${id}-err" hidden>${f.type === "signatures" ? "Add at least one signature." : "This one is needed."}</span>` : "";
   switch (f.type){
+    case "fixed":
+      return `<div class="field"><span class="label">${esc(f.label)}</span><div class="fixed-val">${esc(f.value)}</div></div>`;
     case "notice":
       return `<div class="notice">${f.title ? `<b>${esc(f.title)}</b>` : ""}<p>${esc(f.text)}</p></div>`;
     case "text":
@@ -497,7 +581,7 @@ function fieldHTML(form, f, v){
       return `<div class="field"><span class="label">${esc(f.label)}${req}</span><div class="sigs">` + list.map((s,i) => `
         <div class="sig-item">
           <div class="sig-item-head"><select id="${id}-${i}-name" data-gsn="${f.id}" data-i="${i}" aria-label="Who is signing"><option value="">Who is signing?</option>${names.map(nm => `<option ${s.name === nm ? "selected" : ""}>${esc(nm)}</option>`).join("")}<option value="__other" ${s.other || (s.name && !names.includes(s.name)) ? "selected" : ""}>Visitor / other</option></select>
-            <button type="button" class="btn-small btn-ghost" data-sigclear="${i}">Clear</button>${list.length > 1 ? `<button type="button" class="icon-btn" data-sigdel="${i}" aria-label="Remove signature ${i+1}">×</button>` : ""}</div>
+            <button type="button" class="btn-small btn-ghost" data-sigclear="${i}" data-sigfield="${f.id}">Clear</button>${list.length > 1 ? `<button type="button" class="icon-btn" data-sigdel="${i}" data-sigfield="${f.id}" aria-label="Remove signature ${i+1}">×</button>` : ""}</div>
           ${s.name && !names.includes(s.name) || s.other ? `<input type="text" id="${id}-${i}-other" data-gso="${f.id}" data-i="${i}" placeholder="Visitor's name and company" value="${esc(names.includes(s.name) ? "" : s.name)}">` : ""}
           <div class="sig-wrap small"><div class="sig-line"></div><canvas data-gsig="${f.id}" data-i="${i}"></canvas><div class="sig-hint" ${s.sig ? "hidden" : ""}>Sign here</div></div>
         </div>`).join("") + `</div><button type="button" class="btn-small btn-ghost" data-sigadd="${f.id}" style="justify-self:start">+ Add signature</button>${err}</div>`;
@@ -534,13 +618,71 @@ function render(){
   const form = FORMS[current], v = values(), host = $("#generic-body");
   $("#generic-title").textContent = form.title;
   host.innerHTML = form.sections.map((s, si) => {
-    const inner = s.fields.map(f => (f.showIf && !f.showIf(v)) ? "" : fieldHTML(form, f, v)).join("");
-    return `<section class="card" id="gs-${si}"><h2>${esc(s.title)}</h2>${inner}</section>`;
-  }).join("") + `<section class="card" id="generic-send"><h2>Send</h2>${sendHTML(form)}</section>`;
+    const inner = s.locked ? lockedHTML(s, v) : s.fields.map(f => (f.showIf && !f.showIf(v)) ? "" : fieldHTML(form, f, v)).join("");
+    return `<section class="card${s.locked ? " locked" : ""}" id="gs-${si}"><h2>${esc(s.title)}${s.locked ? ` <span class="hint" style="text-transform:none;letter-spacing:0;font-family:var(--f-body)">from the employee</span>` : ""}</h2>${inner}</section>`;
+  }).join("") + `<section class="card" id="generic-send"><h2>${form.mode === "submit" ? "Submit" : form.mode === "investigate" ? "Finish" : "Send"}</h2>${form.mode === "submit" ? submitHTML() : form.mode === "investigate" ? investigateHTML() : sendHTML(form)}</section>`;
   rerenderIfShapeChanged.last = shapeOf();
   initSigs();
 }
-function sendHTML(form){
+// Read-only view of answers someone else already gave (the employee's part, seen by the investigating manager)
+function lockedHTML(s, v){
+  const rows = s.fields.filter(f => f.id && (!f.showIf || f.showIf(v))).map(f => {
+    if (f.type === "signatures") return v[f.id].filter(x => x.sig).map(x => `<div class="ro-row"><span class="hint">${esc(f.label)}</span><span>${esc(x.name || "")}<br><img class="ro-sig" src="${x.sig}" alt="Signature"></span></div>`).join("");
+    const a = answerText(f, v); if (!a) return "";
+    return `<div class="ro-row"><span class="hint">${esc(f.label)}</span><span>${esc(a).replace(/\n/g, "<br>")}</span></div>`;
+  }).join("");
+  return rows || `<p class="hint" style="margin:0">Nothing filled in.</p>`;
+}
+function submitHTML(){
+  return `<div class="send"><span class="hint">Your report is saved for the managers to investigate. Managers with alerts turned on are notified straight away.</span>
+    <div class="btns"><button type="button" class="btn-hivis" id="g-submit">Submit report</button></div>
+    <div class="status" id="g-status" role="status"></div>
+    <div class="btns"><span id="g-clear-wrap"><button type="button" class="btn-small btn-ghost" id="g-clear">Clear form and start again</button></span></div></div>`;
+}
+function investigateHTML(){
+  return `<div class="send"><div class="btns"><button type="button" id="g-save-inv">Save for later</button><button type="button" class="btn-hivis" id="g-finish-inv">Finish investigation</button></div>
+    <span class="hint">Finish saves the investigation as complete. Then you'll send the full PDF to Wade, Gareth and Toby.</span>
+    <div class="status" id="g-status" role="status"></div>
+    <div id="g-after"></div>
+    <span id="g-del-wrap"><button type="button" class="btn-small btn-danger" id="g-del-inc">Delete this report</button></span></div>`;
+}
+let invContext = null;   // {id} of the incident being investigated
+async function submitReport(btn){
+  if (!validate()) return status("Some details are missing. Check the fields marked in red.", true);
+  const v = values(), sig = (v.empSignatures || []).find(x => x.sig);
+  btn.disabled = true; status("Submitting…");
+  try{
+    await window.NZCS_HOOKS.submitIncident({report: v, reported_by: (sig && sig.name) || (v.involved || [])[0] || "", summary: [v.event, v.project].filter(Boolean).join(" – ")});
+    drafts[current] = blankValues(FORMS[current]);
+    $("#generic-send").innerHTML = `<h2>Submitted</h2><div class="done-box"><b>Report submitted.</b><span>The managers have it and will complete the investigation. Managers with alerts turned on have been notified.</span><button type="button" class="btn-small btn-ghost" id="g-new-report" style="justify-self:start">Start a new report</button></div>`;
+    document.querySelectorAll("#generic-body section.card:not(#generic-send)").forEach(sec => sec.remove());
+    window.scrollTo(0,0);
+  }catch(err){
+    btn.disabled = false;
+    status(err.offline ? "No signal. Nothing is lost while the app stays open. Tap Submit again when you have signal." : err.message, true);
+  }
+}
+async function saveInvestigation(complete, btn){
+  const form = FORMS[current], v = values();
+  if (complete && !validate()) return status("Some details are missing. Check the fields marked in red.", true);
+  const inv = {};
+  form.sections.filter(s => !s.locked).forEach(s => s.fields.forEach(f => { if (f.id) inv[f.id] = v[f.id]; }));
+  btn.disabled = true; status("Saving…");
+  try{
+    await window.NZCS_HOOKS.saveInvestigation(invContext.id, inv, complete);
+    btn.disabled = false;
+    if (complete){
+      status("Investigation finished. Now send the PDF.");
+      $("#g-after").innerHTML = sendHTML(form, true);
+      $("#g-save-inv").remove(); $("#g-finish-inv").remove();
+    } else status("Saved. You can come back to it from the incident list.");
+  }catch(err){ btn.disabled = false; status(err.offline ? "No signal. Try again when you have signal." : err.message, true); }
+}
+function sendHTML(form, after){
+  // "after" = shown under a finished investigation, which already has its own status line and no Clear button
+  if (after) return `<div class="send"><div><span class="hint">To ${esc(form.sendToLabel)}:</span> <span class="addr">${form.sendTo.map(esc).join(", ")}</span></div>
+    <div class="btns"><button type="button" class="btn-hivis" id="g-share">Send PDF</button><button type="button" id="g-pdf">Download PDF</button><a class="btn" id="g-mail" href="#">Open email</a></div>
+    <span class="hint">${canShareFiles ? "Opens your phone's share menu with the PDF attached. Pick Gmail or Outlook, then paste the addresses into the To line (they're copied for you)." : "Download the PDF, then use Open email and attach it from your Downloads."}</span></div>`;
   return `<div class="send"><div><span class="hint">To ${esc(form.sendToLabel)}:</span> <span class="addr">${form.sendTo.map(esc).join(", ")}</span></div>
     <div class="btns"><button type="button" class="btn-hivis" id="g-share">Send PDF</button><button type="button" id="g-pdf">Download PDF</button><a class="btn" id="g-mail" href="#">Open email</a></div>
     <span class="hint">${canShareFiles ? "Opens your phone's share menu with the PDF attached. Pick Gmail or Outlook, then paste the addresses into the To line (they're copied for you)." : "Download the PDF, then use Open email and attach it from your Downloads."}</span>
@@ -647,8 +789,15 @@ function bind(){
       t.setAttribute("aria-pressed", String(v[t.dataset.gm].includes(val))); rerenderIfShapeChanged(); return; }
     if (t.dataset.ddclose){ $("#" + t.dataset.ddclose).open = false; return; }
     if (t.dataset.sigadd){ v[t.dataset.sigadd].push({name:"", sig:""}); render(); return; }
-    if (t.dataset.sigdel){ v.signatures.splice(+t.dataset.sigdel, 1); render(); return; }
-    if (t.dataset.sigclear){ v.signatures[+t.dataset.sigclear].sig = ""; render(); return; }
+    if (t.dataset.sigdel){ v[t.dataset.sigfield || "signatures"].splice(+t.dataset.sigdel, 1); render(); return; }
+    if (t.dataset.sigclear){ v[t.dataset.sigfield || "signatures"][+t.dataset.sigclear].sig = ""; render(); return; }
+    if (t.id === "g-submit") return submitReport(t);
+    if (t.id === "g-save-inv") return saveInvestigation(false, t);
+    if (t.id === "g-finish-inv") return saveInvestigation(true, t);
+    if (t.id === "g-new-report"){ drafts[current] = blankValues(FORMS[current]); rerenderIfShapeChanged.last = null; render(); window.scrollTo(0,0); return; }
+    if (t.id === "g-del-inc"){ $("#g-del-wrap").innerHTML = `<span class="confirm">Delete this incident report for good? <button type="button" class="btn-small btn-danger" id="g-del-yes">Delete</button><button type="button" class="btn-small" id="g-del-no">Keep</button></span>`; return; }
+    if (t.id === "g-del-no"){ $("#g-del-wrap").innerHTML = `<button type="button" class="btn-small btn-danger" id="g-del-inc">Delete this report</button>`; return; }
+    if (t.id === "g-del-yes"){ try{ await window.NZCS_HOOKS.deleteIncident(invContext.id); location.hash = "#incident-report"; }catch(err){ status(err.message, true); } return; }
     if (t.dataset.mixadd){ const list = v[t.dataset.mixadd]; const last = list[list.length - 1] || {}; list.push({product:"", ml:"", litres:last.litres || "", unit:"mL"}); render(); const el = $(`#g-${t.dataset.mixadd}-${list.length - 1}-product`); if (el) el.focus(); return; }
     if (t.dataset.mixunit){
       const m = v[t.dataset.mixunit][+t.dataset.i]; m.unit = t.dataset.val === "g" ? "g" : "mL";
@@ -732,7 +881,7 @@ function locate(fieldId, btn){
 /* ---------------- Checking ---------------- */
 function validate(){
   const form = FORMS[current], v = values(); let first = null;
-  form.sections.forEach(s => s.fields.forEach(f => {
+  form.sections.filter(s => !s.locked).forEach(s => s.fields.forEach(f => {
     if (!f.required || (f.showIf && !f.showIf(v))) return;
     let ok = true;
     if (f.type === "signatures") ok = v[f.id].some(x => x.sig);
@@ -917,6 +1066,9 @@ function download(){
 window.NZCS_FORMS_ENGINE = {
   forms: FORMS,
   open(key){ current = key; if (!drafts[key]) drafts[key] = blankValues(FORMS[key]); rerenderIfShapeChanged.last = null; render(); requestAnimationFrame(initSigs); },
+  // Open a form filled with answers from elsewhere (an incident being investigated)
+  openWith(key, filled, ctx){ current = key; invContext = ctx || null; drafts[key] = Object.assign(blankValues(FORMS[key]), filled || {}); rerenderIfShapeChanged.last = null; render(); requestAnimationFrame(initSigs); },
+  showMessage(html){ $("#generic-body").innerHTML = html; },
   close(){ current = null; },
   isStarted,
 };
