@@ -163,6 +163,7 @@ const FORMS = {
       ]},
       { title: "Wrap up", fields: [
         { id:"comments", type:"textarea", label:"Any comments about the job or problems encountered" },
+        { id:"photos", type:"photos", label:"Photos (optional)" },
         { id:"signatures", type:"signatures", label:"Signature", required:true },
       ]},
     ],
@@ -335,7 +336,12 @@ function fieldHTML(form, f, v){
       const list = v[f.id] || [];
       return `<div class="field"><span class="label">${esc(f.label)}</span>
         <div class="photos">${list.map((p,i) => `<div class="photo"><img src="${p}" alt="Photo ${i+1}"><button type="button" class="icon-btn" data-photodel="${f.id}" data-i="${i}" aria-label="Remove photo ${i+1}">×</button></div>`).join("")}</div>
-        <label class="btn btn-small photo-add" for="${id}-file">+ Add photo</label><input type="file" id="${id}-file" data-gph="${f.id}" accept="image/*" multiple hidden>
+        <div class="photo-btns">
+          <label class="btn btn-small photo-add" for="${id}-camera"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Take photo</label>
+          <input type="file" id="${id}-camera" data-gph="${f.id}" accept="image/*" capture="environment" hidden>
+          <label class="btn btn-small photo-add" for="${id}-file"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/></svg>Choose from gallery</label>
+          <input type="file" id="${id}-file" data-gph="${f.id}" accept="image/*" multiple hidden>
+        </div>
         <span class="hint" id="${id}-status">Photos are shrunk to keep the email small.</span></div>`;
     }
   }
