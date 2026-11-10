@@ -245,6 +245,74 @@ const FORMS = {
       ]},
     ],
   },
+  vehicle: {
+    staffField: "person",
+    hash: "#vehicle-check",
+    title: "Vehicle Check",
+    pdfTitle: "NZCS Vehicle Pre Start Check",
+    blurb: "Pre-start check for utes and trucks: WOF, rego, service, engine, tyres, lights, safety gear.",
+    sendTo: ["team@nzconservation.nz", "operations@nzconservation.nz"],
+    sendToLabel: "Wade and Gareth",
+    icon: '<path d="M3 15V9l2-4h9l3 4h3a1 1 0 0 1 1 1v5"/><path d="M3 15h18"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>',
+    titleFrom: v => `${(v.vehicle === "Other" ? (v.vehicleOther || "Other vehicle") : v.vehicle) || "Vehicle"} ${dmy(v.when)}`,
+    sections: [
+      { title: "Check details", fields: [
+        { id:"when", type:"datetime", label:"Date and time", required:true },
+        { id:"location", type:"location", label:"Location" },
+        { id:"person", type:"person", label:"Person performing pre-start check", required:true },
+        { id:"vehicle", type:"select", label:"Vehicle", required:true,
+          options:["Mitsubishi Triton LNC560","Mazda BT50 GTK24","Ford Ranger Flat Deck HLR533","Isuzu Elf Tip Truck HGY173","Mazda BT50 Flat Deck LPA794","Ford Ranger Double Cab EYB719","Nissan Navara LCU877","Toyota ToyoAce EEE422","Other"] },
+        { id:"vehicleOther", type:"text", label:"Which vehicle? (make, model and rego)", showIf:v => v.vehicle === "Other" },
+      ]},
+      { title: "Vehicle details", fields: [
+        { id:"wofDue", type:"choice", options:YN, label:"WOF due?" },
+        { id:"regoDue", type:"choice", options:YN, label:"Registration due?" },
+        { id:"serviceDue", type:"choice", options:YN, label:"Service due?" },
+        { id:"kmToService", type:"number", label:"KMs left before service is due" },
+        { id:"ruc", type:"choice", options:YN, label:"Road user charges (mileage) up to date?" },
+        { id:"odometer", type:"number", label:"Odometer reading (speedo)" },
+        { id:"photoRego", type:"photos", label:"Photo of registration and road user charges" },
+        { id:"photoWof", type:"photos", label:"Photo of service sticker and WOF" },
+        { id:"tyrePressureChecked", type:"choice", options:YN, label:"Tyre pressures checked?" },
+      ]},
+      { title: "Engine", fields: [
+        { id:"engineOk", type:"choice", options:YN, label:"Is the engine in working condition?" },
+        { id:"water", type:"choice", options:YN, label:"Is the water level correct?" },
+        { id:"leaks", type:"choice", options:YN, label:"Any leaks under the vehicle or in the engine bay?" },
+        { id:"fuel", type:"choice", options:YN, label:"Enough fuel for the day's activities?" },
+        { id:"washer", type:"choice", options:YN, label:"Does the window washer reservoir have enough water?" },
+      ]},
+      { title: "Tyres", fields: [
+        { id:"tyresGood", type:"choice", options:YN, label:"Are the tyres in good condition, including the spare?" },
+        { id:"tyresPressure", type:"choice", options:YN, label:"Are the tyres at the correct pressure?" },
+      ]},
+      { title: "Body and interior", fields: [
+        { id:"damage", type:"choice", options:YN, label:"Is there any new damage on the vehicle?" },
+        { id:"outsideClean", type:"choice", options:YN, label:"Is the outside of the vehicle clean enough?" },
+        { id:"insideClean", type:"choice", options:YN, label:"Is the vehicle interior clean?" },
+        { id:"windows", type:"choice", options:YN, label:"Are the windows clean?" },
+        { id:"wipers", type:"choice", options:YN, label:"Are the window wipers effective?" },
+      ]},
+      { title: "Lights", fields: [
+        { id:"indicators", type:"choice", options:YN, label:"Are the indicators and hazard lights working?" },
+        { id:"headlights", type:"choice", options:YN, label:"Are the headlights working (high and low beam)?" },
+        { id:"reversing", type:"choice", options:YN, label:"Are the reversing lights working?" },
+        { id:"brakeLights", type:"choice", options:YN, label:"Are the brake lights working?" },
+        { id:"trailerPlug", type:"choice", label:"Condition of trailer plug", options:["OK","Needs attention","No trailer plug"] },
+      ]},
+      { title: "Safety equipment", fields: [
+        { id:"extinguisher", type:"choice", options:YN, label:"Fire extinguisher present and operational?" },
+        { id:"jack", type:"choice", options:YN, label:"Is there a jack and tyre changing equipment?" },
+        { id:"firstAid", type:"choice", options:YN, label:"Is the first aid kit present and fully stocked?" },
+        { id:"hygiene", type:"choice", options:YN, label:"Is there sunscreen, hand sanitiser, soap and toilet paper in the vehicle?" },
+        { id:"handbrake", type:"choice", options:YN, label:"Handbrake working?" },
+      ]},
+      { title: "Sign off", fields: [
+        { id:"comments", type:"textarea", label:"Comments or things that need attention on the vehicle" },
+        { id:"signatures", type:"signatures", label:"Signature", required:true },
+      ]},
+    ],
+  },
 };
 window.NZCS_ONEOFF = FORMS;
 
@@ -306,6 +374,8 @@ function fieldHTML(form, f, v){
       const names = peopleList(form);
       return `<div class="field"><label for="${id}">${esc(f.label)}${req}</label><select id="${id}" data-g="${f.id}"><option value="">Pick a name</option>${names.map(nm => `<option ${v[f.id] === nm ? "selected" : ""}>${esc(nm)}</option>`).join("")}</select>${err}</div>`;
     }
+    case "select":
+      return `<div class="field"><label for="${id}">${esc(f.label)}${req}</label><select id="${id}" data-g="${f.id}"><option value="">Pick one</option>${f.options.map(o => `<option ${v[f.id] === o ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>${err}</div>`;
     case "checklist": {
       const ticked = v[f.id] || [];
       return `<div class="field"><span class="label">${esc(f.label)}</span><div class="checklist">` +
@@ -419,7 +489,7 @@ function updateDerived(){
   }));
 }
 // <select> fields fire "change", not always "input"
-document.addEventListener("change", e => { const t = e.target; if (t.matches && t.matches("#generic-body select[data-g]")){ const v = values(); if (v){ v[t.dataset.g] = t.value; const er = $(`#g-${t.dataset.g}-err`); if (er) er.hidden = true; } } });
+document.addEventListener("change", e => { const t = e.target; if (t.matches && t.matches("#generic-body select[data-g]")){ const v = values(); if (v){ v[t.dataset.g] = t.value; const er = $(`#g-${t.dataset.g}-err`); if (er) er.hidden = true; rerenderIfShapeChanged(); } } });
 
 /* ---------------- Signature pads ---------------- */
 function initSigs(){

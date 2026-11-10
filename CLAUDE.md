@@ -69,6 +69,7 @@ All one-off forms go to **team@ and operations@** (Wade and Gareth). Charge Out 
 - **Quad / LUV Check** (`#quad-check`): inspector from `STAFF` (no Sam), vehicles Quad 1–6, DR200 two-wheeler, Red LUV 570, Green LUV XP 1000. Tick list; unticked items print as "NOT TICKED" (sending is still allowed). Damage notes + photos. Service hours with "hours until service" / red "overdue".
 
 - **Hazard Report** (`#hazard-report`): date/time, location + map, name (STAFF + Sam), photo of hazard, hazard type (tick all that apply: unsafe track, underrunner, unsafe bridge, mine shaft, weather, tree felling, black ice, steep terrain, high wind, fences/gates, access tracks, stock, wild animals, other → explain), description, GPS taken Yes/No, precautions (notified team, flagging/taped area, GPS location taken, notified landowner, other → explain), mitigation, signature. File name uses the first part of the address.
+- **Vehicle Pre Start Check** (`#vehicle-check`): person from `STAFF` (no Sam), vehicle dropdown (Mitsubishi Triton LNC560, Mazda BT50 GTK24, Ford Ranger Flat Deck HLR533, Isuzu Elf Tip Truck HGY173, Mazda BT50 Flat Deck LPA794, Ford Ranger Double Cab EYB719, Nissan Navara LCU877, Toyota ToyoAce EEE422, Other → type it). WOF/rego/service due, KMs to service, RUC, odometer, photo of rego + RUC, photo of service sticker + WOF, then Yes/No checks for engine, tyres, body, lights (+ trailer plug OK / Needs attention / No trailer plug) and safety gear; comments; signature.
 
 ## App-wide conventions
 
