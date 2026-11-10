@@ -176,7 +176,6 @@ const FORMS = {
     sendToLabel: "Wade and Gareth",
     icon: '<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M9 17h6M6 14l2-5h6l3 5M12 9V6h3"/>',
     titleFrom: v => `${v.vehicle || "Vehicle"} ${dmy(v.when)}`,
-    extraPeople: ["Sam Haliday", "Toby Haliday"],
     sections: [
       { title: "Check details", fields: [
         { id:"when", type:"datetime", label:"Date & time", required:true },
@@ -188,6 +187,7 @@ const FORMS = {
         { id:"checks", type:"checklist", label:"Tick each item once checked and OK",
           options:["Tyre pressure (3.6 psi)","Brakes (hand and foot)","Brake lights","Headlights","Oil level","Tyre tread","Fire extinguisher present and valid","No obvious broken or damaged parts"] },
         { id:"damage", type:"textarea", label:"If anything is damaged or not OK, name the damage and how / when it occurred" },
+        { id:"photos", type:"photos", label:"Photos of any damage or broken parts (optional)" },
       ]},
       { title: "Service", fields: [
         { id:"hours", type:"number", label:"Current hours" },
