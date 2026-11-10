@@ -11,6 +11,7 @@ const nowLocal = () => { const d = new Date(); return `${d.getFullYear()}-${pad2
 const dmy = iso => iso ? iso.slice(0,10).split("-").reverse().join("-") : "";
 const dmyTime = v => v ? dmy(v) + (v.length > 10 ? " " + v.slice(11,16) : "") : "";
 const STAFF = () => (window.NZCS_STAFF || []);
+const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; };
 
 /* ---------------- Form definitions ---------------- */
 const YN = ["Yes", "No"];
@@ -314,6 +315,61 @@ const FORMS = {
       ]},
     ],
   },
+  trailer: {
+    staffField: "person",
+    hash: "#trailer-check",
+    title: "Trailer Check",
+    pdfTitle: "NZCS Trailer Pre Start Check",
+    blurb: "Pre-start check for trailers and horse floats: rego, WOF, lights, wheels, couplings.",
+    sendTo: ["team@nzconservation.nz", "operations@nzconservation.nz"],
+    sendToLabel: "Wade and Gareth",
+    icon: '<path d="M2 8h15v8H2z"/><path d="M17 13h3l2 1"/><circle cx="7" cy="17.5" r="2"/><circle cx="12" cy="17.5" r="2"/>',
+    titleFrom: v => `${(v.trailer === "Other" ? (v.trailerOther || "Other trailer") : v.trailer) || "Trailer"} ${dmy(v.when)}`,
+    sections: [
+      { title: "Check details", fields: [
+        { id:"when", type:"datetime", label:"Date and time", required:true },
+        { id:"location", type:"location", label:"Location" },
+        { id:"person", type:"person", label:"Person filling out the form", required:true },
+        { id:"trailer", type:"select", label:"Trailer being checked", required:true,
+          options:["Jobmate 7x4 143G7","Jobmate 7x4 cage trailer 97F53","Red Bryford trailer P301G","Bryford 846M3","Bryford tip trailer 6BR70","T Choice T989U","Single horse float 23F21","Double horse float","Other"] },
+        { id:"trailerOther", type:"text", label:"Which trailer? (make, type and rego)", showIf:v => v.trailer === "Other" },
+      ]},
+      { title: "Registration and WOF", fields: [
+        { id:"registered", type:"choice", options:YN, alertIf:"No", label:"Is it currently registered?" },
+        { id:"regoExpiry", type:"date", label:"Date of registration expiry", alertWhen:v => !!v.regoExpiry && v.regoExpiry < todayISO() },
+        { id:"wofCurrent", type:"choice", options:YN, alertIf:"No", label:"Is the WOF current?" },
+        { id:"wofExpiry", type:"month", label:"WOF expiry (month and year)", alertWhen:v => !!v.wofExpiry && v.wofExpiry < todayISO().slice(0,7) },
+        { id:"photoLabels", type:"photos", label:"Photo of WOF and rego labels" },
+      ]},
+      { title: "Lights", fields: [
+        { id:"brakeLights", type:"choice", options:YN, alertIf:"No", label:"Brake lights working?" },
+        { id:"indicators", type:"choice", options:YN, alertIf:"No", label:"Indicators working?" },
+        { id:"plateLight", type:"choice", options:YN, alertIf:"No", label:"Number plate light working?" },
+        { id:"parkLights", type:"choice", options:YN, alertIf:"No", label:"Park lights working?" },
+        { id:"positionLights", type:"choice", options:["Yes","No","Not fitted"], alertIf:"No", label:"Position lights working (if fitted)?" },
+      ]},
+      { title: "Wheels", fields: [
+        { id:"treads", type:"choice", options:YN, alertIf:"No", label:"Tyre treads suitable (more than 2 mm)?" },
+        { id:"pressures", type:"choice", options:YN, alertIf:"No", label:"Tyres pumped to suitable pressures?" },
+        { id:"nuts", type:"choice", options:YN, alertIf:"No", label:"Wheel nuts tight?" },
+        { id:"bearings", type:"choice", options:YN, alertIf:"No", label:"Wheel bearings tight and not making noise?" },
+      ]},
+      { title: "Couplings", fields: [
+        { id:"towball", type:"choice", options:YN, alertIf:"No", label:"Is your towball size correct / matching?" },
+        { id:"plug", type:"choice", options:YN, alertIf:"No", label:"Trailer plug in good condition?" },
+        { id:"shackles", type:"choice", options:YN, alertIf:"No", label:"D-shackles present?" },
+        { id:"trailerBrake", type:"choice", options:["Yes","No","Not applicable"], alertIf:"No", label:"Trailer brake functional (if applicable)?" },
+      ]},
+      { title: "Damage", fields: [
+        { id:"damage", type:"textarea", label:"Describe any damage" },
+        { id:"photos", type:"photos", label:"Photos of any damage (optional)" },
+      ]},
+      { title: "Sign off", fields: [
+        { type:"notice", text:"If anything needs attention, please see management." },
+        { id:"signatures", type:"signatures", label:"Signature", required:true },
+      ]},
+    ],
+  },
 };
 window.NZCS_ONEOFF = FORMS;
 
@@ -357,12 +413,12 @@ function mixLine(m){
 const usedMixes = list => (list || []).filter(m => m.product.trim() || m.ml !== "" || m.litres !== "");
 
 /* ---------------- Problem answers (shown red on screen and on the PDF) ---------------- */
-const isAlert = (f, v) => f.alertIf != null && (!f.showIf || f.showIf(v)) && v[f.id] === f.alertIf;
+const isAlert = (f, v) => (!f.showIf || f.showIf(v)) && f.type !== "derived" && ((f.alertIf != null && v[f.id] === f.alertIf) || (!!f.alertWhen && f.alertWhen(v)));
 function alertLabels(form, v){
   const out = [];
   form.sections.forEach(s => s.fields.forEach(f => {
     if (f.showIf && !f.showIf(v)) return;
-    if (isAlert(f, v)) out.push(`${f.label.replace(/\?$/, "")}: ${v[f.id]}`);
+    if (isAlert(f, v)) out.push(`${f.label.replace(/\?$/, "")}: ${answerText(f, v)}${f.alertWhen && (f.type === "date" || f.type === "month") ? " (expired)" : ""}`);
     if (f.type === "checklist" && f.alertUnticked) f.options.forEach(o => { if (!v[f.id].includes(o)) out.push(`${o}: not ticked`); });
     if (f.type === "derived" && f.alertWhen && f.alertWhen(v)) out.push(f.compute(v));
   }));
@@ -400,6 +456,9 @@ function fieldHTML(form, f, v){
       const txt = f.compute(v);
       return `<div class="field derived" data-derived="${esc(f.label)}"${txt ? "" : " hidden"}><span class="label">${esc(f.label)}</span><b class="derived-val ${/overdue|due now/i.test(txt) ? "warn" : ""}">${esc(txt)}</b></div>`;
     }
+    case "date":
+    case "month":
+      return `<div class="field"><label for="${id}">${esc(f.label)}${req}</label><input type="${f.type}" id="${id}" data-g="${f.id}" value="${esc(v[f.id])}">${err}</div>`;
     case "time":
       return `<div class="field"><label for="${id}">${esc(f.label)}${req}</label><input type="time" id="${id}" data-g="${f.id}" value="${esc(v[f.id])}">${err}</div>`;
     case "tally": {
@@ -689,6 +748,8 @@ function validate(){
 function answerText(f, v){
   const a = v[f.id];
   if (f.type === "datetime") return dmyTime(a);
+  if (f.type === "date") return dmy(a);
+  if (f.type === "month") return a ? a.split("-").reverse().join("-") : "";
   if (f.type === "tally") return f.rows.map(r => r.name + ": " + r.cols.filter(c => tallyCols(f, v).includes(c)).map(c => `${c.toLowerCase()} ${a[r.name + "|" + c] || 0}`).join(", ")).join("\n");
   if (f.type === "mixes") return usedMixes(a).map(mixLine).join("\n");
   if (f.type === "location") return [a.address, a.lat != null ? `GPS ${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}` : ""].filter(Boolean).join("\n");
