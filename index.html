@@ -881,7 +881,15 @@ function buildPDF(job){
   }
   return doc;
 }
-const fileName = job => sheetTitle(job).replace(/[\\/:*?"<>|]+/g, "-") + ".pdf";
+// File name and email subject carry the staff initials before the date(s): "... - Willowbank Farm - WM GC 05-11-2026 to 09-11-2026"
+const initialsOf = name => String(name || "").trim().split(/\s+/).map(w => w[0] || "").join("").toUpperCase();
+function fileTitle(job){
+  const ds = job.days.map(d => d.date).sort();
+  const dates = dmy(ds[0]) + (ds.length > 1 && ds[ds.length-1] !== ds[0] ? " to " + dmy(ds[ds.length-1]) : "");
+  const inits = Array.from(new Set(job.days.flatMap(d => d.people).map(initialsOf).filter(Boolean))).join(" ");
+  return `NZCS Staff Charge Out - ${job.job_name}${inits ? " - " + inits : ""} ${dates}`;
+}
+const fileName = job => fileTitle(job).replace(/[\\/:*?"<>|]+/g, "-") + ".pdf";
 function makeFile(job){
   if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("The PDF maker didn't load. Reload the page and try again.");
   return new File([buildPDF(job).output("blob")], fileName(job), {type:"application/pdf"});
@@ -898,7 +906,7 @@ async function sharePdf(){
   let file; try{ file = makeFile(finished); }catch(err){ return sendStatus(err.message, true); }
   try{ navigator.clipboard && navigator.clipboard.writeText(SEND_TO).catch(() => {}); }catch(e){}
   if (canShareFiles){
-    try{ await navigator.share({files:[file], title:sheetTitle(finished)}); sendStatus("Shared. Check the email went to " + SEND_TO + "."); }
+    try{ await navigator.share({files:[file], title:fileTitle(finished)}); sendStatus("Shared. Check the email went to " + SEND_TO + "."); }
     catch(err){ if (err && err.name === "AbortError") sendStatus("Share cancelled.", true); else { downloadFile(file); sendStatus("Sharing didn't work here, so the PDF was downloaded. Use Open email to Sam and attach it.", true); } }
   } else {
     downloadFile(file); sendStatus("PDF downloaded. Opening an email to Sam; attach the PDF from your Downloads.");
@@ -918,7 +926,7 @@ function emailBody(job){
   L.push("", "Job complete and ready to charge: Yes", "Signed charge out sheet attached as PDF.");
   return L.join("\n");
 }
-const mailHref = job => `mailto:${SEND_TO}?subject=${encodeURIComponent(sheetTitle(job))}&body=${encodeURIComponent("Signed charge out sheet attached as PDF.")}`;
+const mailHref = job => `mailto:${SEND_TO}?subject=${encodeURIComponent(fileTitle(job))}&body=${encodeURIComponent("Signed charge out sheet attached as PDF.")}`;
 function copyEmail(){
   if (!finished) return;
   const txt = "Subject: " + sheetTitle(finished) + "\n\n" + emailBody(finished);

@@ -16,6 +16,7 @@ const STAFF = () => (window.NZCS_STAFF || []);
 const YN = ["Yes", "No"];
 const FORMS = {
   toolbox: {
+    staffField: "staff",
     hash: "#toolbox",
     title: "Toolbox Meeting",
     pdfTitle: "NZCS Toolbox Meeting",
@@ -91,6 +92,7 @@ const FORMS = {
     ],
   },
   spray: {
+    staffField: "applicators",
     hash: "#spray-diary",
     title: "Spray Diary",
     pdfTitle: "NZCS Spray Diary",
@@ -125,6 +127,7 @@ const FORMS = {
     ],
   },
   kill: {
+    staffField: "staff",
     hash: "#kill-sheet",
     title: "Kill Sheet",
     pdfTitle: "NZCS Ungulate Control Kill Sheet",
@@ -168,6 +171,7 @@ const FORMS = {
     ],
   },
   quad: {
+    staffField: "inspector",
     hash: "#quad-check",
     title: "Quad / LUV Check",
     pdfTitle: "NZCS Quad Pre Start Check",
@@ -660,10 +664,23 @@ function buildPDF(){
 }
 const canShareFiles = (() => { try{ return !!(navigator.canShare && navigator.canShare({files:[new File(["x"], "t.pdf", {type:"application/pdf"})]})); }catch(e){ return false; } })();
 function status(msg, bad){ const s = $("#g-status"); if (s){ s.className = "status" + (bad ? " bad" : ""); s.textContent = msg; } }
+// Staff initials for file names: "Wade McSoriley" -> "WM", in the order picked.
+const initialsOf = name => String(name || "").trim().split(/\s+/).map(w => w[0] || "").join("").toUpperCase();
+function staffInitials(form, v){
+  const raw = v[form.staffField];
+  const names = (Array.isArray(raw) ? raw : [raw]).filter(n => n && n !== "Other");
+  return Array.from(new Set(names.map(initialsOf).filter(Boolean))).join(" ");
+}
+// "NZCS Spray Diary - Willowbank farm - GC WM 10-11-2026": initials go just before the date.
+function fileTitle(){
+  const form = FORMS[current], v = values(), t = form.titleFrom(v), inits = staffInitials(form, v);
+  const cut = t.lastIndexOf(" ");
+  return `${form.pdfTitle} - ` + (inits && cut > 0 ? `${t.slice(0, cut)} - ${inits} ${t.slice(cut + 1)}` : t);
+}
 function makeFile(){
   if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("The PDF maker didn't load. Reload the page and try again.");
-  const {doc, title} = buildPDF();
-  return new File([doc.output("blob")], title.replace(/[\\/:*?"<>|]+/g, "-") + ".pdf", {type:"application/pdf"});
+  const {doc} = buildPDF();
+  return new File([doc.output("blob")], fileTitle().replace(/[\\/:*?"<>|]+/g, "-") + ".pdf", {type:"application/pdf"});
 }
 function downloadFile(file){
   const url = URL.createObjectURL(file), a = document.createElement("a");
@@ -677,7 +694,7 @@ function emailBody(){
   L.push("", "Full form attached as PDF.");
   return L.join("\n");
 }
-const mailHref = () => { const form = FORMS[current], v = values(); return `mailto:${form.sendTo.join(",")}?subject=${encodeURIComponent(`${form.pdfTitle} - ${form.titleFrom(v)}`)}&body=${encodeURIComponent("Form attached as PDF.")}`; };
+const mailHref = () => { const form = FORMS[current], v = values(); return `mailto:${form.sendTo.join(",")}?subject=${encodeURIComponent(fileTitle())}&body=${encodeURIComponent("Form attached as PDF.")}`; };
 async function share(){
   if (!validate()) return status("Some details are missing. Check the fields marked in red.", true);
   let file; try{ file = makeFile(); }catch(err){ return status(err.message, true); }
