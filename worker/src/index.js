@@ -99,7 +99,43 @@ async function getJob(env, id) {
   return job;
 }
 
-async function handle(req, env) {
+/* ---------- Incident alerts (Web Push, no message body) ----------
+   Phones subscribe with their push address; when an incident is submitted we "ping" each one.
+   The app's service worker then shows "Incident reported – needs investigation".
+   Signed with the VAPID key pair: public key in VAPID_PUBLIC (var), private JWK in VAPID_PRIVATE_JWK (secret). */
+const PUSH_HOSTS = [/\.googleapis\.com$/, /\.push\.apple\.com$/, /\.mozilla\.com$/, /\.notify\.windows\.com$/, /^fcm\.googleapis\.com$/];
+const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const b64urlText = str => b64url(new TextEncoder().encode(str));
+async function vapidJWT(env, aud){
+  const jwk = JSON.parse(env.VAPID_PRIVATE_JWK);
+  const key = await crypto.subtle.importKey("jwk", jwk, {name:"ECDSA", namedCurve:"P-256"}, false, ["sign"]);
+  const head = b64urlText(JSON.stringify({typ:"JWT", alg:"ES256"}));
+  const body = b64urlText(JSON.stringify({aud, exp: Math.floor(Date.now()/1000) + 12*3600, sub:"https://wade-14.github.io/nzcs-chargeout/"}));
+  const sig = await crypto.subtle.sign({name:"ECDSA", hash:"SHA-256"}, key, new TextEncoder().encode(head + "." + body));
+  return head + "." + body + "." + b64url(sig);
+}
+async function notifyManagers(env){
+  if (!env.VAPID_PRIVATE_JWK || !env.VAPID_PUBLIC) return;
+  const { results } = await env.DB.prepare("SELECT endpoint FROM push_subs").all();
+  await Promise.all(results.map(async ({endpoint}) => {
+    try{
+      const jwt = await vapidJWT(env, new URL(endpoint).origin);
+      const r = await fetch(endpoint, {method:"POST", headers:{"Authorization":`vapid t=${jwt}, k=${env.VAPID_PUBLIC}`, "TTL":"86400", "Urgency":"high", "Content-Length":"0"}});
+      if (r.status === 404 || r.status === 410) await env.DB.prepare("DELETE FROM push_subs WHERE endpoint = ?1").bind(endpoint).run();
+    }catch(e){ /* one bad subscription shouldn't stop the others */ }
+  }));
+}
+function okEndpoint(u){
+  try{ const url = new URL(u); return url.protocol === "https:" && PUSH_HOSTS.some(rx => rx.test(url.hostname)); }catch(e){ return false; }
+}
+function cleanIncidentPart(obj){
+  if (!obj || typeof obj !== "object") throw new Error("Missing incident details.");
+  const text = JSON.stringify(obj);
+  if (text.length > 500000) throw new Error("That's too much to save in one go. Remove a photo or two and try again.");
+  return text;
+}
+
+async function handle(req, env, ctx) {
   const url = new URL(req.url);
   const path = url.pathname.replace(/\/+$/, "");
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(req, env) });
@@ -117,6 +153,59 @@ async function handle(req, env) {
   let m;
   // The worker share code, for the app's "Share the app" message (never the manager code)
   if (path === "/api/share-code" && req.method === "GET") return json(req, env, { code: env.WORKER_CODE || "" });
+  /* ---------- Incident reports ---------- */
+  // Anyone with a code can submit the employee's part; managers are alerted.
+  if (path === "/api/incidents" && req.method === "POST") {
+    const body = await readBody(req);
+    const report = cleanIncidentPart(body.report);
+    const t = now(), id = uid();
+    await env.DB.prepare("INSERT INTO incidents (id, status, reported_by, summary, report, created_at, updated_at) VALUES (?1, 'open', ?2, ?3, ?4, ?5, ?5)")
+      .bind(id, str(body.reported_by, 120), str(body.summary, 200), report, t).run();
+    if (ctx && ctx.waitUntil) ctx.waitUntil(notifyManagers(env)); else await notifyManagers(env);
+    return json(req, env, { id }, 201);
+  }
+  // Everything else about incidents is managers only (they can hold injury and medical details).
+  if (path.startsWith("/api/incidents") && role !== "manager") return fail(req, env, 403, "Only managers can open incident reports.");
+  if (path === "/api/incidents" && req.method === "GET") {
+    const status = url.searchParams.get("status") === "complete" ? "complete" : "open";
+    const { results } = await env.DB.prepare("SELECT id, status, reported_by, summary, created_at, updated_at, completed_at FROM incidents WHERE status = ?1 ORDER BY created_at DESC LIMIT 200").bind(status).all();
+    return json(req, env, { incidents: results });
+  }
+  if ((m = path.match(/^\/api\/incidents\/([\w-]{36})$/))) {
+    const id = m[1];
+    if (req.method === "GET") {
+      const r = await env.DB.prepare("SELECT * FROM incidents WHERE id = ?1").bind(id).first();
+      if (!r) return fail(req, env, 404, "That incident no longer exists. It may have been deleted.");
+      return json(req, env, { incident: { ...r, report: JSON.parse(r.report), investigation: JSON.parse(r.investigation || "{}") } });
+    }
+    if (req.method === "PUT") {
+      const body = await readBody(req);
+      const inv = cleanIncidentPart(body.investigation);
+      const complete = !!body.complete, t = now();
+      const r = await env.DB.prepare("UPDATE incidents SET investigation = ?2, status = ?3, completed_at = ?4, updated_at = ?5 WHERE id = ?1")
+        .bind(id, inv, complete ? "complete" : "open", complete ? t : null, t).run();
+      if (!r.meta || !r.meta.changes) return fail(req, env, 404, "That incident no longer exists. It may have been deleted.");
+      return json(req, env, { id, status: complete ? "complete" : "open" });
+    }
+    if (req.method === "DELETE") {
+      await env.DB.prepare("DELETE FROM incidents WHERE id = ?1").bind(id).run();
+      return json(req, env, { deleted: id });
+    }
+  }
+  /* ---------- Alert subscriptions (managers) ---------- */
+  if (path === "/api/push/key" && req.method === "GET") return json(req, env, { key: env.VAPID_PUBLIC || "" });
+  if (path === "/api/push/subscribe" && req.method === "POST") {
+    if (role !== "manager") return fail(req, env, 403, "Only managers can turn on incident alerts.");
+    const body = await readBody(req), endpoint = str(body.endpoint, 1000);
+    if (!okEndpoint(endpoint)) return fail(req, env, 400, "This phone's notification service isn't supported.");
+    await env.DB.prepare("INSERT OR REPLACE INTO push_subs (endpoint, created_at) VALUES (?1, ?2)").bind(endpoint, now()).run();
+    return json(req, env, { subscribed: true });
+  }
+  if (path === "/api/push/unsubscribe" && req.method === "POST") {
+    const body = await readBody(req);
+    await env.DB.prepare("DELETE FROM push_subs WHERE endpoint = ?1").bind(str(body.endpoint, 1000)).run();
+    return json(req, env, { subscribed: false });
+  }
   // List jobs: /api/jobs?status=open|complete
   if (path === "/api/jobs" && req.method === "GET") {
     const status = url.searchParams.get("status") === "complete" ? "complete" : "open";
@@ -200,13 +289,14 @@ async function handle(req, env) {
 }
 
 export default {
-  async fetch(req, env) {
-    try { return await handle(req, env); }
+  async fetch(req, env, ctx) {
+    try { return await handle(req, env, ctx); }
     catch (err) { return fail(req, env, 400, err && err.message ? err.message : "Something went wrong."); }
   },
   // Daily tidy-up: remove completed jobs older than a year (they're in Sam's email as PDFs).
   async scheduled(_event, env) {
     const cutoff = new Date(Date.now() - KEEP_COMPLETED_DAYS * 86400000).toISOString();
+    await env.DB.prepare("DELETE FROM incidents WHERE status = 'complete' AND completed_at < ?1").bind(cutoff).run();
     const { results } = await env.DB.prepare("SELECT id FROM jobs WHERE status = 'complete' AND completed_at < ?1").bind(cutoff).all();
     for (const r of results) {
       await env.DB.batch([

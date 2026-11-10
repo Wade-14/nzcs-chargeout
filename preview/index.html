@@ -171,6 +171,18 @@ body:not(.locked) .gate{display:none}
 .folder-title{margin:0 0 12px;font-family:var(--f-display);font-size:26px;font-weight:700}
 .tile.folder .ic{background:var(--forest-soft);color:var(--forest)}
 .tile .count-line{font-size:13px;color:var(--muted);font-weight:600}
+.fixed-val{background:var(--sunken);border:1px dashed var(--line);border-radius:8px;padding:11px 12px;color:var(--muted)}
+.ro-row{display:grid;grid-template-columns:minmax(0,40%) minmax(0,1fr);gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:15px}
+.ro-row:last-child{border-bottom:0}
+.ro-row>span:last-child{overflow-wrap:anywhere}
+.ro-sig{max-width:180px;background:#fff;border-radius:4px;margin-top:4px}
+section.card.locked{background:var(--sunken)}
+.inbox{background:var(--surface);border:2px solid var(--danger);border-radius:var(--r);padding:14px;margin-bottom:14px;display:grid;gap:10px}
+.inbox h2{margin:0;font-family:var(--f-display);font-size:20px;color:var(--danger)}
+.inbox a.inc{display:grid;gap:2px;text-decoration:none;color:var(--ink);background:var(--sunken);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.inbox a.inc b{font-size:15px}
+.badge.urgent{background:var(--danger-soft);color:var(--danger)}
+.alert-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .home-sub{margin:0 0 6px;font-family:var(--f-display);font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--forest);font-weight:600}
 .tiles{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
 .tile{display:grid;grid-template-columns:48px 1fr;gap:12px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;text-decoration:none;color:var(--ink);min-height:110px}
@@ -319,6 +331,7 @@ body.drawer-open .drawer-shade{opacity:1;pointer-events:auto}
     </div>
     <div class="top-actions"><a class="btn btn-small back" href="#" id="generic-home">← Back</a></div>
   </header>
+  <div id="generic-extra"></div>
   <form id="generic-body" autocomplete="off" novalidate onsubmit="return false"></form>
 </div>
 
@@ -440,6 +453,13 @@ body.drawer-open .drawer-shade{opacity:1;pointer-events:auto}
     <div class="btns"><button type="button" class="btn-primary" id="btn-share-app">Share link and code</button><button type="button" id="btn-copy-app">Copy message</button></div>
     <div class="status" id="share-app-status" role="status"></div>
   </section>
+  <section id="alerts-section" hidden>
+    <h3>Incident alerts</h3>
+    <p class="hint" style="margin:0">Get a notification on this phone when someone submits an incident / accident report. Managers only.</p>
+    <span id="alerts-state" class="hint"></span>
+    <div class="alert-row"><button type="button" class="btn-primary" id="btn-alerts" hidden>Turn on incident alerts</button></div>
+    <div class="status" id="alerts-msg" role="status"></div>
+  </section>
 </aside>
 
 <script src="vendor/jspdf.umd.min.js"></script>
@@ -483,7 +503,7 @@ async function api(method, path, body){
   return data;
 }
 function lock(msg){ store.del(AUTH_KEY); auth = null; document.body.classList.add("locked"); const e = $("#gate-err"); if (msg){ e.textContent = msg; e.hidden = false; } }
-function unlock(){ document.body.classList.remove("locked"); const mgr = !(auth && auth.role === "manager"); $("#role-pill").hidden = mgr; $("#role-pill-home").hidden = mgr; route(); loadJobs(); }
+function unlock(){ document.body.classList.remove("locked"); const mgr = !(auth && auth.role === "manager"); $("#role-pill").hidden = mgr; $("#role-pill-home").hidden = mgr; route(); loadJobs(); loadIncidents(); }
 $("#gate-form").addEventListener("submit", async e => {
   e.preventDefault();
   const code = $("#gate-code").value.trim(), err = $("#gate-err"), btn = $("#gate-go");
@@ -835,7 +855,7 @@ $("#jobs-host").addEventListener("click", async e => {
   }
   if (id === "job-cancel") return renderJob();
 });
-document.addEventListener("visibilitychange", () => { if (!document.hidden && auth) loadJobs(); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && auth){ loadJobs(); loadIncidents(); } });
 
 /* ---------- PDF ---------- */
 // Add up material quantities that share a unit ("33 L" + "20 L" = "53 L"); otherwise list them.
@@ -1028,6 +1048,7 @@ const ONEOFF = {};   // "#toolbox" -> "toolbox"
 if (ENGINE){
   Object.entries(ENGINE.forms).forEach(([key, f]) => {
     ONEOFF[f.hash] = key;
+    if (f.noTile) return;
     const a = document.createElement("a"); a.className = "tile"; a.href = f.hash; a.id = "tile-" + key;
     a.innerHTML = `<span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${f.icon}</svg></span>
       <span class="tt"><b>${esc(f.title)}</b><span class="hint">${esc(f.blurb)}</span><span class="badges"><span class="badge draft" id="tile-draft-${key}" hidden>Form started</span></span></span>`;
@@ -1041,14 +1062,14 @@ const FOLDERS = [
    icon:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3h6v3H9z"/><path d="M8.5 11h7M8.5 15h4.5"/>'},
   {id:"jobs", title:"Job Records", blurb:"Spray diaries and kill sheets.", forms:["spray","kill"],
    icon:'<path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M8 12h8M8 15.5h5"/>'},
-  {id:"safety", title:"Health & Safety Forms", blurb:"Toolbox meetings and hazard reports.", forms:["toolbox","hazard"],
+  {id:"safety", title:"Health & Safety Forms", blurb:"Toolbox meetings, hazard reports and incident / accident reports.", forms:["toolbox","hazard","incident"],
    icon:'<path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>'},
   {id:"vehicles", title:"Vehicle & Equipment Checks", blurb:"Vehicle, trailer and quad / LUV pre-start checks.", forms:["vehicle","quad","trailer"],
    icon:'<path d="M3 15V9l2-4h9l3 4h3a1 1 0 0 1 1 1v5"/><path d="M3 15h18"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>'},
 ];
 const folderOf = key => (FOLDERS.find(f => f.forms.includes(key)) || {}).id;
 // Any form not given a folder still shows up, in the last folder
-if (ENGINE) Object.keys(ENGINE.forms).forEach(k => { if (!folderOf(k)) FOLDERS[FOLDERS.length - 1].forms.push(k); });
+if (ENGINE) Object.keys(ENGINE.forms).forEach(k => { if (!ENGINE.forms[k].noTile && !folderOf(k)) FOLDERS[FOLDERS.length - 1].forms.push(k); });
 FOLDERS.forEach(f => {
   const a = document.createElement("a"); a.className = "tile folder"; a.href = "#folder-" + f.id; a.id = "folder-" + f.id;
   a.innerHTML = `<span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${f.icon}</svg></span>
@@ -1070,22 +1091,29 @@ function updateFolderBadges(){
   FOLDERS.forEach(f => {
     const started = f.forms.some(k => k === "chargeout" ? !(formIsFree() && !finished) : (ENGINE && ENGINE.forms[k] && ENGINE.isStarted(k)));
     $("#folder-draft-" + f.id).hidden = !started;
-    const jb = $("#folder-jobs-" + f.id), n = f.forms.includes("chargeout") ? jobsCache.length : 0;
-    jb.hidden = !n; jb.textContent = plural(n, "job") + " in progress";
+    const jb = $("#folder-jobs-" + f.id);
+    if (f.forms.includes("chargeout")){ const n = jobsCache.length; jb.hidden = !n; jb.className = "badge"; jb.textContent = plural(n, "job") + " in progress"; }
+    else if (f.forms.includes("incident")){ const n = incidentsOpen.length; jb.hidden = !n; jb.className = "badge urgent"; jb.textContent = plural(n, "incident") + " to investigate"; }
+    else jb.hidden = true;
   });
 }
 function route(){
   const h = location.hash;
-  const view = h === "#charge-out" ? "chargeout" : ONEOFF[h] ? "generic" : "home";
+  const investigating = h.startsWith("#investigate-");
+  const view = h === "#charge-out" ? "chargeout" : (ONEOFF[h] || investigating) ? "generic" : "home";
+  $("#generic-extra").innerHTML = "";
   if (view === "home") showFolder(h.startsWith("#folder-") ? h.slice(8) : null);
   document.body.classList.toggle("view-home", view === "home");
   document.body.classList.toggle("view-form", view === "chargeout");
   document.body.classList.toggle("view-generic", view === "generic");
-  if (view === "generic") ENGINE.open(ONEOFF[h]); else if (ENGINE) ENGINE.close();
+  if (view === "generic"){
+    if (investigating) openInvestigation(h.slice(13));
+    else { ENGINE.open(ONEOFF[h]); if (h === "#incident-report") renderIncidentInbox(); }
+  } else if (ENGINE) ENGINE.close();
   if (view !== "home") closeDrawer();
   if (view === "home"){
     closePanel(); $("#tile-draft").hidden = formIsFree() && !finished;
-    if (ENGINE) Object.keys(ENGINE.forms).forEach(k => { $("#tile-draft-" + k).hidden = !ENGINE.isStarted(k); });
+    if (ENGINE) Object.keys(ENGINE.forms).forEach(k => { const b = $("#tile-draft-" + k); if (b) b.hidden = !ENGINE.isStarted(k); });
     updateFolderBadges();
   }
   if (view === "chargeout") setTimeout(sizeCanvas, 30);
@@ -1093,10 +1121,84 @@ function route(){
 }
 window.addEventListener("hashchange", route);
 const goTo = hash => { history.replaceState(null, "", location.pathname + hash); route(); };
-const backToFolder = e => { e.preventDefault(); const key = location.hash === "#charge-out" ? "chargeout" : ONEOFF[location.hash]; const f = folderOf(key); goTo(f ? "#folder-" + f : ""); };
+const backToFolder = e => {
+  e.preventDefault();
+  if (location.hash.startsWith("#investigate-")) return goTo("#incident-report");
+  const key = location.hash === "#charge-out" ? "chargeout" : ONEOFF[location.hash]; const f = folderOf(key); goTo(f ? "#folder-" + f : "");
+};
 $("#btn-home").addEventListener("click", backToFolder);
 $("#generic-home").addEventListener("click", backToFolder);
 $("#folder-back").addEventListener("click", e => { e.preventDefault(); goTo(""); });
+
+/* ---------- incident reports (stored until a manager investigates) ---------- */
+let incidentsOpen = [];
+const isManager = () => !!(auth && auth.role === "manager");
+async function loadIncidents(){
+  if (!isManager()) { incidentsOpen = []; return; }
+  try{ incidentsOpen = (await api("GET", "/api/incidents?status=open")).incidents || []; }catch(e){ /* keep last list */ }
+  const tb = $("#tile-incident"); if (tb){ let b = tb.querySelector(".badge.urgent"); if (!b){ b = document.createElement("span"); b.className = "badge urgent"; tb.querySelector(".badges").prepend(b); } b.hidden = !incidentsOpen.length; b.textContent = plural(incidentsOpen.length, "incident") + " to investigate"; }
+  updateFolderBadges();
+  if (location.hash === "#incident-report") renderIncidentInbox(true);
+}
+function renderIncidentInbox(noFetch){
+  const host = $("#generic-extra");
+  if (!isManager()){ host.innerHTML = ""; return; }
+  if (!noFetch) { loadIncidents(); }
+  host.innerHTML = incidentsOpen.length ? `<div class="inbox"><h2>Incidents to investigate (${incidentsOpen.length})</h2>` +
+    incidentsOpen.map(i => `<a class="inc" href="#investigate-${i.id}"><b>${esc(i.summary || "Incident report")}</b><span class="meta">Reported by ${esc(i.reported_by || "unknown")} · ${esc(dmy((i.created_at || "").slice(0,10)))}</span></a>`).join("") +
+    `<span class="hint">Tap one to read it and complete the investigation. To report a new incident, fill in the form below.</span></div>` : "";
+}
+async function openInvestigation(id){
+  if (!isManager()){ ENGINE.showMessage(`<section class="card"><p class="status bad">Only managers can open incident reports.</p></section>`); return; }
+  ENGINE.showMessage(`<section class="card"><p class="hint">Loading the report…</p></section>`);
+  try{
+    const {incident} = await api("GET", `/api/incidents/${id}`);
+    if (location.hash !== "#investigate-" + id) return;
+    ENGINE.openWith("incidentInv", Object.assign({}, incident.report, incident.investigation || {}), {id});
+  }catch(err){ ENGINE.showMessage(`<section class="card"><p class="status bad">${esc(err.message)}</p></section>`); }
+}
+window.NZCS_HOOKS = {
+  submitIncident: body => api("POST", "/api/incidents", body),
+  saveInvestigation: async (id, investigation, complete) => { const r = await api("PUT", `/api/incidents/${id}`, {investigation, complete}); loadIncidents(); return r; },
+  deleteIncident: async id => { await api("DELETE", `/api/incidents/${id}`); loadIncidents(); },
+};
+
+/* ---------- incident alerts (Web Push) ---------- */
+const pushSupported = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window && location.protocol === "https:";
+const isInstalled = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const b64ToBytes = b => { const s = atob((b + "=".repeat((4 - b.length % 4) % 4)).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(s, c => c.charCodeAt(0)); };
+async function currentSub(){ if (!pushSupported()) return null; const reg = await navigator.serviceWorker.getRegistration(); return reg ? reg.pushManager.getSubscription() : null; }
+async function renderAlerts(){
+  const box = $("#alerts-section"); if (!box) return;
+  box.hidden = !isManager(); if (!isManager()) return;
+  const st = $("#alerts-state"), btn = $("#btn-alerts");
+  if (!pushSupported()){ st.textContent = "This phone or browser can't show app alerts."; btn.hidden = true; return; }
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !isInstalled()){ st.textContent = "On iPhone, add the app to your home screen first, then open it from there to turn on alerts."; btn.hidden = true; return; }
+  const sub = await currentSub();
+  btn.hidden = false;
+  st.textContent = sub ? "On for this phone. You'll get a notification when an incident is reported." : "Off for this phone.";
+  btn.textContent = sub ? "Turn off incident alerts" : "Turn on incident alerts";
+  btn.dataset.on = sub ? "1" : "";
+}
+async function toggleAlerts(){
+  const msg = $("#alerts-msg"); msg.className = "status"; msg.textContent = "";
+  try{
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if ($("#btn-alerts").dataset.on){
+      if (sub){ await api("POST", "/api/push/unsubscribe", {endpoint: sub.endpoint}); await sub.unsubscribe(); }
+      msg.textContent = "Incident alerts turned off.";
+    } else {
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted"){ msg.className = "status bad"; msg.textContent = "Notifications are blocked. Allow them for this app in your phone's settings, then try again."; return; }
+      const {key} = await api("GET", "/api/push/key");
+      if (!sub) sub = await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:b64ToBytes(key)});
+      await api("POST", "/api/push/subscribe", {endpoint: sub.endpoint});
+      msg.textContent = "Incident alerts turned on for this phone.";
+    }
+  }catch(err){ msg.className = "status bad"; msg.textContent = "Couldn't change alerts: " + (err.message || err); }
+  renderAlerts();
+}
 
 /* ---------- settings drawer: share the app ---------- */
 const APP_URL = "https://wade-14.github.io/nzcs-chargeout/";
@@ -1112,7 +1214,8 @@ async function loadShareCode(){
   catch(e){ if (auth && auth.role === "worker") workerCode = auth.code.toUpperCase(); }
   $("#share-code").textContent = workerCode || "Needs signal to load";
 }
-function openDrawer(){ document.body.classList.add("drawer-open"); $("#drawer").setAttribute("aria-hidden","false"); $("#btn-menu").setAttribute("aria-expanded","true"); $("#share-app-status").textContent = ""; loadShareCode(); $("#drawer-close").focus(); }
+$("#btn-alerts").addEventListener("click", toggleAlerts);
+function openDrawer(){ renderAlerts(); document.body.classList.add("drawer-open"); $("#drawer").setAttribute("aria-hidden","false"); $("#btn-menu").setAttribute("aria-expanded","true"); $("#share-app-status").textContent = ""; loadShareCode(); $("#drawer-close").focus(); }
 function closeDrawer(){ if (!document.body.classList.contains("drawer-open")) return; document.body.classList.remove("drawer-open"); $("#drawer").setAttribute("aria-hidden","true"); $("#btn-menu").setAttribute("aria-expanded","false"); $("#btn-menu").focus(); }
 $("#btn-menu").addEventListener("click", openDrawer);
 $("#drawer-close").addEventListener("click", closeDrawer);

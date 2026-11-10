@@ -9,6 +9,10 @@ binding = "DB"
 database_name = "nzcs-chargeout"
 database_id = "c394cb2b-4311-4ee2-8343-da56789c57f3"
 
+[vars]
+# Public half of the incident-alert signing key (safe to publish). The private half is the VAPID_PRIVATE_JWK secret.
+VAPID_PUBLIC = "BDU_73BNQ9jLtUeX23ShBmzkw_CNpQi6pWP0kLgD3DZhWblp90THZQ39IMsihjRBKBsfUZa2QCtE6SrV_DuRbAc"
+
 [triggers]
 crons = ["17 14 * * *"]   # daily tidy-up, ~3am NZ time
 
