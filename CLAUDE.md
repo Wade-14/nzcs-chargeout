@@ -68,6 +68,8 @@ All one-off forms go to **team@ and operations@** (Wade and Gareth). Charge Out 
 - **Kill Sheet** (`#kill-sheet`): "Are you…" Shooting / Counting / **Filling bait stations**. Animal tally grid: Deer, Possums, Pigs, Hares, Goats, Rats, Mice. Shooting/counting columns Seen / Shot / Confirmed kills (deer only). Bait-station mode columns Seen / Found under bait stations (possums, hares, rats, mice) + Bait station notes, and hides the gun-cleaning notice. **No photo option on the kill sheet.**
 - **Quad / LUV Check** (`#quad-check`): inspector from `STAFF` (no Sam), vehicles Quad 1–6, DR200 two-wheeler, Red LUV 570, Green LUV XP 1000. Tick list; unticked items print as "NOT TICKED" (sending is still allowed). Damage notes + photos. Service hours with "hours until service" / red "overdue".
 
+- **Hazard Report** (`#hazard-report`): date/time, location + map, name (STAFF + Sam), photo of hazard, hazard type (tick all that apply: unsafe track, underrunner, unsafe bridge, mine shaft, weather, tree felling, black ice, steep terrain, high wind, fences/gates, access tracks, stock, wild animals, other → explain), description, GPS taken Yes/No, precautions (notified team, flagging/taped area, GPS location taken, notified landowner, other → explain), mitigation, signature. File name uses the first part of the address.
+
 ## App-wide conventions
 
 - **Settings drawer** (☰ on the home screen): "Share the app" shares the live link + worker share code + install steps. The code comes from the Worker (`GET /api/share-code`, needs a valid code, only ever returns `WORKER_CODE`), so it is never in the public files.

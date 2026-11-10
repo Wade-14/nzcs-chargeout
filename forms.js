@@ -208,6 +208,43 @@ const FORMS = {
       ]},
     ],
   },
+  hazard: {
+    staffField: "name",
+    hash: "#hazard-report",
+    title: "Hazard Report",
+    pdfTitle: "NZCS Hazard Report",
+    blurb: "Report a hazard on site: what it is, where, photos, and what's been done about it.",
+    sendTo: ["team@nzconservation.nz", "operations@nzconservation.nz"],
+    sendToLabel: "Wade and Gareth",
+    icon: '<path d="M12 3l9.5 17h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.3" r=".6" fill="currentColor"/>',
+    // File name uses the first part of the address, e.g. "Marshall Road 358"
+    titleFrom: v => `${((v.location && v.location.address) || "").split(",")[0].trim() || "Hazard"} ${dmy(v.when)}`,
+    extraPeople: ["Sam Haliday"],
+    sections: [
+      { title: "Report details", fields: [
+        { id:"when", type:"datetime", label:"Date and time", required:true },
+        { id:"location", type:"location", label:"Location" },
+        { id:"name", type:"person", label:"Name", required:true },
+      ]},
+      { title: "The hazard", fields: [
+        { id:"photos", type:"photos", label:"Photo of hazard" },
+        { id:"hazardType", type:"multi", label:"Hazard type", required:true,
+          options:["Unsafe track","Underrunner","Unsafe bridge","Mine shaft","Weather","Tree felling","Black ice","Steep terrain","High wind","Fences / gates","Access tracks","Stock","Wild animals","Other"] },
+        { id:"hazardOther", type:"textarea", label:"Describe the other hazard", showIf:v => (v.hazardType||[]).includes("Other") },
+        { id:"describe", type:"textarea", label:"Describe the hazard and its implications on planned work", required:true },
+        { id:"gps", type:"choice", options:YN, label:"GPS location taken?" },
+      ]},
+      { title: "Precautions and actions", fields: [
+        { id:"precautions", type:"multi", label:"What precautions have you taken to make sure people are aware of the hazard?",
+          options:["Notified team","Flagging / taped area","GPS location taken for further reference","Notified landowner","Other"] },
+        { id:"precautionsOther", type:"textarea", label:"Please explain the other precaution", showIf:v => (v.precautions||[]).includes("Other") },
+        { id:"mitigate", type:"textarea", label:"What actions can be taken to mitigate the risk?" },
+      ]},
+      { title: "Sign off", fields: [
+        { id:"signatures", type:"signatures", label:"Signature", required:true },
+      ]},
+    ],
+  },
 };
 window.NZCS_ONEOFF = FORMS;
 
@@ -645,8 +682,10 @@ function buildPDF(){
     // Photos, two per row
     s.fields.filter(f => f.type === "photos").forEach(f => {
       const photos = v[f.id]; if (!photos.length) return;
-      heading("Photos"); y += 2;
       const colW = (W - 2*M - 6) / 2; let col = 0, rowH = 0;
+      // Keep the heading with the first photo: start a new page if the first one won't fit
+      try{ const p0 = doc.getImageProperties(photos[0]); const h0 = Math.min(95, colW * p0.height / p0.width); if (y + 12 + h0 > H - 16){ doc.addPage(); y = 20; } }catch(e){}
+      heading(f.label.replace(/\s*\(optional\)\s*$/i, "")); y += 2;
       photos.forEach(p => {
         let props; try{ props = doc.getImageProperties(p); }catch(e){ return; }
         let w = colW, h = w * props.height / props.width; if (h > 95){ h = 95; w = h * props.width / props.height; }
