@@ -70,6 +70,8 @@ All one-off forms go to **team@ and operations@** (Wade and Gareth). Charge Out 
 
 ## App-wide conventions
 
+- **Settings drawer** (☰ on the home screen): "Share the app" shares the live link + worker share code + install steps. The code comes from the Worker (`GET /api/share-code`, needs a valid code, only ever returns `WORKER_CODE`), so it is never in the public files.
+
 - One-off forms live in memory only: kept while the app is open, wiped when closed or cleared. Charge Out keeps its draft on the phone.
 - **PDF file name / email subject**: form type – property – **staff initials** – date, e.g. `NZCS Spray Diary - Willowbank farm - GC WM 10-11-2026.pdf`. Initials in the order ticked.
 - Sending uses the phone's share menu with **only the PDF and subject** (no body text). Download PDF and "Open email" are fallbacks.

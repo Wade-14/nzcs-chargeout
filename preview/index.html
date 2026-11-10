@@ -235,6 +235,22 @@ body.view-generic .home,body.view-generic .layout,body.view-generic .bar,body.lo
 .derived-val{font-size:17px;color:var(--forest)}
 .derived-val.warn{color:var(--danger)}
 .loc-map{width:100%;max-width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.menu-btn{width:44px;padding:0}
+.menu-btn svg{width:22px;height:22px}
+.drawer-shade{position:fixed;inset:0;background:rgba(10,18,13,.45);z-index:60;opacity:0;pointer-events:none;transition:opacity .2s}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(360px,88vw);z-index:61;background:var(--surface);border-left:1px solid var(--line);box-shadow:-10px 0 30px rgba(0,0,0,.18);
+  transform:translateX(105%);transition:transform .22s ease;overflow-y:auto;display:grid;align-content:start;gap:18px;
+  padding-top:calc(18px + env(safe-area-inset-top,0px));padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));padding-left:18px;padding-right:max(18px,env(safe-area-inset-right,0px))}
+body.drawer-open .drawer{transform:none}
+body.drawer-open .drawer-shade{opacity:1;pointer-events:auto}
+.drawer-head{display:flex;justify-content:space-between;align-items:center}
+.drawer-head h2{margin:0;font-family:var(--f-display);font-size:26px;font-weight:700}
+.drawer section{display:grid;gap:10px;border-top:1px solid var(--line);padding-top:16px}
+.drawer h3{margin:0;font-family:var(--f-display);font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--forest)}
+.share-box{background:var(--sunken);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:grid;gap:4px;font-size:14px;word-break:break-all}
+.share-box b{font-size:16px;letter-spacing:.04em}
+.drawer .btns{display:flex;flex-wrap:wrap;gap:8px}
+@media (prefers-reduced-motion:reduce){.drawer,.drawer-shade{transition:none}}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 </style>
 </head>
@@ -259,7 +275,10 @@ body.view-generic .home,body.view-generic .layout,body.view-generic .bar,body.lo
       <small>NZ Conservation Services Ltd</small>
       <h1>NZCS Forms</h1>
     </div>
-    <span class="role" id="role-pill-home" hidden>Manager</span>
+    <div class="top-actions">
+      <span class="role" id="role-pill-home" hidden>Manager</span>
+      <button type="button" class="btn-small menu-btn" id="btn-menu" aria-label="Open settings" aria-expanded="false" aria-controls="drawer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    </div>
   </header>
     <div class="install" id="install-banner" hidden>
     <div class="install-top">
@@ -398,6 +417,18 @@ body.view-generic .home,body.view-generic .layout,body.view-generic .bar,body.lo
     <a href="#finish" class="btn btn-hivis" id="btn-finish">Finish</a>
   </div>
 </div>
+
+<div class="drawer-shade" id="drawer-shade"></div>
+<aside class="drawer" id="drawer" aria-label="Settings" aria-hidden="true">
+  <div class="drawer-head"><h2>Settings</h2><button type="button" class="btn-small" id="drawer-close">Close</button></div>
+  <section>
+    <h3>Share the app</h3>
+    <p class="hint" style="margin:0">Send staff the link and share code. They open the link, enter the code, then tap Install app.</p>
+    <div class="share-box"><span class="hint">Link</span><span id="share-url"></span><span class="hint" style="margin-top:6px">Share code</span><b id="share-code">…</b></div>
+    <div class="btns"><button type="button" class="btn-primary" id="btn-share-app">Share link and code</button><button type="button" id="btn-copy-app">Copy message</button></div>
+    <div class="status" id="share-app-status" role="status"></div>
+  </section>
+</aside>
 
 <script src="vendor/jspdf.umd.min.js"></script>
 <script src="vendor/jspdf.plugin.autotable.min.js"></script>
@@ -997,6 +1028,7 @@ function route(){
   document.body.classList.toggle("view-form", view === "chargeout");
   document.body.classList.toggle("view-generic", view === "generic");
   if (view === "generic") ENGINE.open(ONEOFF[h]); else if (ENGINE) ENGINE.close();
+  if (view !== "home") closeDrawer();
   if (view === "home"){
     closePanel(); $("#tile-draft").hidden = formIsFree() && !finished;
     if (ENGINE) Object.keys(ENGINE.forms).forEach(k => { $("#tile-draft-" + k).hidden = !ENGINE.isStarted(k); });
@@ -1008,6 +1040,40 @@ window.addEventListener("hashchange", route);
 const goHome = e => { e.preventDefault(); history.replaceState(null, "", location.pathname); route(); };
 $("#btn-home").addEventListener("click", goHome);
 $("#generic-home").addEventListener("click", goHome);
+
+/* ---------- settings drawer: share the app ---------- */
+const APP_URL = "https://wade-14.github.io/nzcs-chargeout/";
+let workerCode = "";
+function shareMessage(){
+  return `Kia ora, here's the NZCS Forms app for charge outs and our daily forms:\n${APP_URL}\n\nShare code: ${workerCode || "(ask the office)"}\n\nOpen the link, enter the code, then tap "Install app" to put it on your home screen.`;
+}
+async function loadShareCode(){
+  $("#share-url").textContent = APP_URL;
+  if (workerCode){ $("#share-code").textContent = workerCode; return; }
+  // Only ever the worker code: from the server, or this phone's own code if it's a worker phone
+  try{ const r = await api("GET", "/api/share-code"); workerCode = (r.code || "").toUpperCase(); }
+  catch(e){ if (auth && auth.role === "worker") workerCode = auth.code.toUpperCase(); }
+  $("#share-code").textContent = workerCode || "Needs signal to load";
+}
+function openDrawer(){ document.body.classList.add("drawer-open"); $("#drawer").setAttribute("aria-hidden","false"); $("#btn-menu").setAttribute("aria-expanded","true"); $("#share-app-status").textContent = ""; loadShareCode(); $("#drawer-close").focus(); }
+function closeDrawer(){ if (!document.body.classList.contains("drawer-open")) return; document.body.classList.remove("drawer-open"); $("#drawer").setAttribute("aria-hidden","true"); $("#btn-menu").setAttribute("aria-expanded","false"); $("#btn-menu").focus(); }
+$("#btn-menu").addEventListener("click", openDrawer);
+$("#drawer-close").addEventListener("click", closeDrawer);
+$("#drawer-shade").addEventListener("click", closeDrawer);
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeDrawer(); });
+function shareStatus(msg, bad){ const s = $("#share-app-status"); s.className = "status" + (bad ? " bad" : ""); s.textContent = msg; }
+function copyShare(){
+  const txt = shareMessage();
+  const fallback = () => { let ta = $("#share-fallback"); if (!ta){ ta = document.createElement("textarea"); ta.id = "share-fallback"; ta.style.cssText = "width:100%;min-height:160px"; $("#share-app-status").after(ta); } ta.value = txt; ta.select(); shareStatus("Copying is blocked here. Select the text below and copy it.", true); };
+  try{ navigator.clipboard.writeText(txt).then(() => shareStatus("Copied. Paste it into a text or email."), fallback); }catch(e){ fallback(); }
+}
+$("#btn-copy-app").addEventListener("click", copyShare);
+$("#btn-share-app").addEventListener("click", async () => {
+  if (navigator.share){
+    try{ await navigator.share({title:"NZCS Forms", text:shareMessage()}); shareStatus("Shared."); }
+    catch(err){ if (!(err && err.name === "AbortError")) copyShare(); }
+  } else copyShare();
+});
 
 /* ---------- start ---------- */
 finished = store.get("nzcs.chargeout.finished", null);

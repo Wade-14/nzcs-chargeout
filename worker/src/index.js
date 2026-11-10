@@ -115,6 +115,8 @@ async function handle(req, env) {
   if (!role) return fail(req, env, 401, "Your share code isn't valid any more. Enter the current code.");
 
   let m;
+  // The worker share code, for the app's "Share the app" message (never the manager code)
+  if (path === "/api/share-code" && req.method === "GET") return json(req, env, { code: env.WORKER_CODE || "" });
   // List jobs: /api/jobs?status=open|complete
   if (path === "/api/jobs" && req.method === "GET") {
     const status = url.searchParams.get("status") === "complete" ? "complete" : "open";
