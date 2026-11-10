@@ -73,7 +73,7 @@ All one-off forms go to **team@ and operations@** (Wade and Gareth). Charge Out 
 
 ## App-wide conventions
 
-- **Home screen folders** (`FOLDERS` in index.html): Job records (Charge Out, Spray Diary, Kill Sheet), Health & safety (Toolbox, Hazard Report), Vehicles & equipment (Vehicle Check, Quad check). New forms must be added to a folder (an unlisted form falls into the last folder). Folder links are `#folder-<id>`; a form's Back button returns to its folder. Folder tiles show "jobs in progress" and "Form started" badges.
+- **Home screen folders** (`FOLDERS` in index.html): Charge Out Forms (Charge Out), Job Records (Spray Diary, Kill Sheet), Health & Safety Forms (Toolbox, Hazard Report), Vehicle & Equipment Checks (Vehicle Check, Quad check). New forms must be added to a folder (an unlisted form falls into the last folder). Folder links are `#folder-<id>`; a form's Back button returns to its folder. Folder tiles show "jobs in progress" and "Form started" badges.
 
 - **Settings drawer** (☰ on the home screen): "Share the app" shares the live link + worker share code + install steps. The code comes from the Worker (`GET /api/share-code`, needs a valid code, only ever returns `WORKER_CODE`), so it is never in the public files.
 
