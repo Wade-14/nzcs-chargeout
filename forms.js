@@ -265,49 +265,50 @@ const FORMS = {
         { id:"vehicleOther", type:"text", label:"Which vehicle? (make, model and rego)", showIf:v => v.vehicle === "Other" },
       ]},
       { title: "Vehicle details", fields: [
-        { id:"wofDue", type:"choice", options:YN, label:"WOF due?" },
-        { id:"regoDue", type:"choice", options:YN, label:"Registration due?" },
-        { id:"serviceDue", type:"choice", options:YN, label:"Service due?" },
+        { id:"wofDue", type:"choice", options:YN, alertIf:"Yes", label:"WOF due?" },
+        { id:"regoDue", type:"choice", options:YN, alertIf:"Yes", label:"Registration due?" },
+        { id:"serviceDue", type:"choice", options:YN, alertIf:"Yes", label:"Service due?" },
         { id:"kmToService", type:"number", label:"KMs left before service is due" },
-        { id:"ruc", type:"choice", options:YN, label:"Road user charges (mileage) up to date?" },
+        { id:"ruc", type:"choice", options:YN, alertIf:"No", label:"Road user charges (mileage) up to date?" },
         { id:"odometer", type:"number", label:"Odometer reading (speedo)" },
         { id:"photoRego", type:"photos", label:"Photo of registration and road user charges" },
         { id:"photoWof", type:"photos", label:"Photo of service sticker and WOF" },
-        { id:"tyrePressureChecked", type:"choice", options:YN, label:"Tyre pressures checked?" },
+        { id:"tyrePressureChecked", type:"choice", options:YN, alertIf:"No", label:"Tyre pressures checked?" },
       ]},
       { title: "Engine", fields: [
-        { id:"engineOk", type:"choice", options:YN, label:"Is the engine in working condition?" },
-        { id:"water", type:"choice", options:YN, label:"Is the water level correct?" },
-        { id:"leaks", type:"choice", options:YN, label:"Any leaks under the vehicle or in the engine bay?" },
-        { id:"fuel", type:"choice", options:YN, label:"Enough fuel for the day's activities?" },
-        { id:"washer", type:"choice", options:YN, label:"Does the window washer reservoir have enough water?" },
+        { id:"engineOk", type:"choice", options:YN, alertIf:"No", label:"Is the engine in working condition?" },
+        { id:"water", type:"choice", options:YN, alertIf:"No", label:"Is the water level correct?" },
+        { id:"leaks", type:"choice", options:YN, alertIf:"Yes", label:"Any leaks under the vehicle or in the engine bay?" },
+        { id:"fuel", type:"choice", options:YN, alertIf:"No", label:"Enough fuel for the day's activities?" },
+        { id:"washer", type:"choice", options:YN, alertIf:"No", label:"Does the window washer reservoir have enough water?" },
       ]},
       { title: "Tyres", fields: [
-        { id:"tyresGood", type:"choice", options:YN, label:"Are the tyres in good condition, including the spare?" },
-        { id:"tyresPressure", type:"choice", options:YN, label:"Are the tyres at the correct pressure?" },
+        { id:"tyresGood", type:"choice", options:YN, alertIf:"No", label:"Are the tyres in good condition, including the spare?" },
+        { id:"tyresPressure", type:"choice", options:YN, alertIf:"No", label:"Are the tyres at the correct pressure?" },
       ]},
       { title: "Body and interior", fields: [
-        { id:"damage", type:"choice", options:YN, label:"Is there any new damage on the vehicle?" },
+        { id:"damage", type:"choice", options:YN, alertIf:"Yes", label:"Is there any new damage on the vehicle?" },
         { id:"outsideClean", type:"choice", options:YN, label:"Is the outside of the vehicle clean enough?" },
         { id:"insideClean", type:"choice", options:YN, label:"Is the vehicle interior clean?" },
         { id:"windows", type:"choice", options:YN, label:"Are the windows clean?" },
-        { id:"wipers", type:"choice", options:YN, label:"Are the window wipers effective?" },
+        { id:"wipers", type:"choice", options:YN, alertIf:"No", label:"Are the window wipers effective?" },
       ]},
       { title: "Lights", fields: [
-        { id:"indicators", type:"choice", options:YN, label:"Are the indicators and hazard lights working?" },
-        { id:"headlights", type:"choice", options:YN, label:"Are the headlights working (high and low beam)?" },
-        { id:"reversing", type:"choice", options:YN, label:"Are the reversing lights working?" },
-        { id:"brakeLights", type:"choice", options:YN, label:"Are the brake lights working?" },
-        { id:"trailerPlug", type:"choice", label:"Condition of trailer plug", options:["OK","Needs attention","No trailer plug"] },
+        { id:"indicators", type:"choice", options:YN, alertIf:"No", label:"Are the indicators and hazard lights working?" },
+        { id:"headlights", type:"choice", options:YN, alertIf:"No", label:"Are the headlights working (high and low beam)?" },
+        { id:"reversing", type:"choice", options:YN, alertIf:"No", label:"Are the reversing lights working?" },
+        { id:"brakeLights", type:"choice", options:YN, alertIf:"No", label:"Are the brake lights working?" },
+        { id:"trailerPlug", type:"choice", alertIf:"Needs attention", label:"Condition of trailer plug", options:["OK","Needs attention","No trailer plug"] },
       ]},
       { title: "Safety equipment", fields: [
-        { id:"extinguisher", type:"choice", options:YN, label:"Fire extinguisher present and operational?" },
-        { id:"jack", type:"choice", options:YN, label:"Is there a jack and tyre changing equipment?" },
-        { id:"firstAid", type:"choice", options:YN, label:"Is the first aid kit present and fully stocked?" },
-        { id:"hygiene", type:"choice", options:YN, label:"Is there sunscreen, hand sanitiser, soap and toilet paper in the vehicle?" },
-        { id:"handbrake", type:"choice", options:YN, label:"Handbrake working?" },
+        { id:"extinguisher", type:"choice", options:YN, alertIf:"No", label:"Fire extinguisher present and operational?" },
+        { id:"jack", type:"choice", options:YN, alertIf:"No", label:"Is there a jack and tyre changing equipment?" },
+        { id:"firstAid", type:"choice", options:YN, alertIf:"No", label:"Is the first aid kit present and fully stocked?" },
+        { id:"hygiene", type:"choice", options:YN, alertIf:"No", label:"Is there sunscreen, hand sanitiser, soap and toilet paper in the vehicle?" },
+        { id:"handbrake", type:"choice", options:YN, alertIf:"No", label:"Handbrake working?" },
       ]},
       { title: "Sign off", fields: [
+        { type:"notice", text:"If anything needs attention, please see management." },
         { id:"comments", type:"textarea", label:"Comments or things that need attention on the vehicle" },
         { id:"signatures", type:"signatures", label:"Signature", required:true },
       ]},
@@ -355,6 +356,14 @@ function mixLine(m){
 }
 const usedMixes = list => (list || []).filter(m => m.product.trim() || m.ml !== "" || m.litres !== "");
 
+/* ---------------- Problem answers (shown red on screen and on the PDF) ---------------- */
+const isAlert = (f, v) => f.alertIf != null && (!f.showIf || f.showIf(v)) && v[f.id] === f.alertIf;
+function alertLabels(form, v){
+  const out = [];
+  form.sections.forEach(s => s.fields.forEach(f => { if (isAlert(f, v)) out.push(`${f.label.replace(/\?$/, "")}: ${v[f.id]}`); }));
+  return out;
+}
+
 /* ---------------- Rendering ---------------- */
 function peopleList(form){ return Array.from(new Set(STAFF().concat(form.extraPeople || []))); }
 function fieldHTML(form, f, v){
@@ -399,7 +408,7 @@ function fieldHTML(form, f, v){
       return `<div class="field"><label for="${id}">${esc(f.label)}${req}</label><input type="datetime-local" id="${id}" data-g="${f.id}" value="${esc(v[f.id])}">${err}</div>`;
     case "choice":
       return `<div class="field"><span class="label">${esc(f.label)}${req}</span><div class="chips" role="group" aria-label="${esc(f.label)}">` +
-        f.options.map((o,i) => `<button type="button" class="chip" id="${id}-${i}" data-gc="${f.id}" data-val="${esc(o)}" aria-pressed="${v[f.id] === o}">${esc(o)}</button>`).join("") + `</div>${err}</div>`;
+        f.options.map((o,i) => `<button type="button" class="chip${f.alertIf === o ? " alert" : ""}" id="${id}-${i}" data-gc="${f.id}" data-val="${esc(o)}" aria-pressed="${v[f.id] === o}">${esc(o)}</button>`).join("") + `</div>${err}</div>`;
     case "multi":
       return `<div class="field"><span class="label">${esc(f.label)}${req} <span class="hint">Tick all that apply</span></span><div class="chips" role="group" aria-label="${esc(f.label)}">` +
         f.options.map((o,i) => `<button type="button" class="chip multi" id="${id}-${i}" data-gm="${f.id}" data-val="${esc(o)}" aria-pressed="${(v[f.id]||[]).includes(o)}">${esc(o)}</button>`).join("") + `</div>${err}</div>`;
@@ -698,6 +707,12 @@ function buildPDF(){
   let y = top + (tl.length-1)*9 + 7;
   doc.setFont("helvetica","normal"); doc.setFontSize(10.5); doc.text("NZ Conservation Services Limited", M, y); y += 8;
   const heading = txt => { if (y > H - 40){ doc.addPage(); y = 20; } doc.setFont("times","normal"); doc.setFontSize(15); doc.setTextColor(...ink); doc.text(txt, M, y); y += 4; };
+  const RED = [179,38,30];
+  const flagged = alertLabels(form, v);
+  if (flagged.length){
+    doc.autoTable(Object.assign({}, base, {startY:y, body:[[{content:"Needs attention - please see management:\n" + flagged.map(t => "- " + t).join("\n"), styles:{textColor:RED, fontStyle:"bold", fillColor:[251,228,226], lineColor:RED, lineWidth:0.4}}]], columnStyles:{0:{cellWidth:"auto"}}}));
+    y = doc.lastAutoTable.finalY + 10;
+  }
   const links = [];
   form.sections.forEach(s => {
     const rows = [];
@@ -707,7 +722,8 @@ function buildPDF(){
       if (f.type === "signatures" || f.type === "photos" || f.type === "tally") return;
       if (f.type === "checklist"){ f.options.forEach(o => rows.push([o, v[f.id].includes(o) ? "Checked OK" : "NOT TICKED"])); return; }
       if (f.type === "derived"){ const t = f.compute(v); if (t) rows.push([f.label, t]); return; }
-      rows.push([f.label, answerText(f, v)]);
+      if (isAlert(f, v)) rows.push([{content:f.label, styles:{textColor:RED}}, {content:answerText(f, v) + "  (needs attention)", styles:{textColor:RED, fontStyle:"bold", fillColor:[251,228,226]}}]);
+      else rows.push([f.label, answerText(f, v)]);
       if (f.type === "location" && v[f.id].lat != null) links.push(`https://www.google.com/maps?q=${v[f.id].lat},${v[f.id].lng}`);
     });
     let headed = false;
