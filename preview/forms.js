@@ -1040,14 +1040,17 @@ async function saveInvestigation(complete, btn){
     } else status("Saved. You can come back to it from the incident list.");
   }catch(err){ btn.disabled = false; status(err.offline ? "No signal. Try again when you have signal." : err.message, true); }
 }
+const mailOn = () => !!(window.NZCS_HOOKS && window.NZCS_HOOKS.mail && window.NZCS_HOOKS.mail().on);
+const shareHint = () => mailOn() ? "Emails the PDF straight to them from the NZCS Forms address."
+  : canShareFiles ? "Opens your phone's share menu with the PDF attached. Pick Gmail or Outlook, then paste the addresses into the To line (they're copied for you)." : "Download the PDF, then use Open email and attach it from your Downloads.";
 function sendHTML(form, after){
   // "after" = shown under a finished investigation, which already has its own status line and no Clear button
   if (after) return `<div class="send"><div><span class="hint">To ${esc(form.sendToLabel)}:</span> <span class="addr">${form.sendTo.map(esc).join(", ")}</span></div>
     <div class="btns"><button type="button" class="btn-hivis" id="g-share">Send PDF</button><button type="button" id="g-pdf">Download PDF</button><a class="btn" id="g-mail" href="#">Open email</a></div>
-    <span class="hint">${canShareFiles ? "Opens your phone's share menu with the PDF attached. Pick Gmail or Outlook, then paste the addresses into the To line (they're copied for you)." : "Download the PDF, then use Open email and attach it from your Downloads."}</span></div>`;
+    <span class="hint" id="g-share-hint">${shareHint()}</span></div>`;
   return `<div class="send"><div><span class="hint">To ${esc(form.sendToLabel)}:</span> <span class="addr">${form.sendTo.map(esc).join(", ")}</span></div>
     <div class="btns"><button type="button" class="btn-hivis" id="g-share">Send PDF</button><button type="button" id="g-pdf">Download PDF</button><a class="btn" id="g-mail" href="#">Open email</a></div>
-    <span class="hint">${canShareFiles ? "Opens your phone's share menu with the PDF attached. Pick Gmail or Outlook, then paste the addresses into the To line (they're copied for you)." : "Download the PDF, then use Open email and attach it from your Downloads."}</span>
+    <span class="hint" id="g-share-hint">${shareHint()}</span>
     <div class="status" id="g-status" role="status"></div>
     <div class="btns"><span id="g-clear-wrap"><button type="button" class="btn-small btn-ghost" id="g-clear">Clear form and start again</button></span></div></div>`;
 }
@@ -1418,6 +1421,12 @@ async function share(){
   if (!validate()) return status("Some details are missing. Check the fields marked in red.", true);
   let file; try{ file = makeFile(); }catch(err){ return status(err.message, true); }
   const to = FORMS[current].sendTo.join(", ");
+  if (mailOn()){
+    const btn = $("#g-share"); if (btn) btn.disabled = true; status("Sending…");
+    try{ await window.NZCS_HOOKS.emailPdf(file, FORMS[current].sendTo, file.name.replace(/\.pdf$/, "")); status("Sent to " + FORMS[current].sendToLabel + " (" + to + "). Tap Clear form when you're done."); if (btn){ btn.disabled = false; btn.textContent = "Send again"; } return; }
+    catch(err){ window.NZCS_HOOKS.mailFailed(); if (btn){ btn.disabled = false; btn.textContent = "Share PDF instead"; } const h = $("#g-share-hint"); if (h) h.textContent = shareHint();
+      return status((err.offline ? "No signal, so the email didn't send." : err.message) + " Tap Share PDF instead to use your phone's share menu.", true); }
+  }
   try{ navigator.clipboard && navigator.clipboard.writeText(to).catch(() => {}); }catch(e){}
   if (canShareFiles){
     try{ await navigator.share({files:[file], title:file.name.replace(/\.pdf$/, "")}); status("Shared. Check it went to " + to + ". Tap Clear form when you're done."); }

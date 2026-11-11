@@ -506,7 +506,13 @@ async function api(method, path, body){
   return data;
 }
 function lock(msg){ store.del(AUTH_KEY); auth = null; document.body.classList.add("locked"); const e = $("#gate-err"); if (msg){ e.textContent = msg; e.hidden = false; } }
-function unlock(){ document.body.classList.remove("locked"); const mgr = !(auth && auth.role === "manager"); $("#role-pill").hidden = mgr; $("#role-pill-home").hidden = mgr; route(); loadJobs(); loadIncidents(); }
+/* ---------- automatic email (server sends the PDF from the forms Gmail account) ---------- */
+let mailOn = false, mailFailed = false;
+async function checkMail(){ try{ mailOn = !!(await api("GET", "/api/mail")).ready; }catch(e){ mailOn = false; } }
+const fileB64 = file => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1] || ""); r.onerror = () => bad(new Error("Couldn't read the PDF.")); r.readAsDataURL(file); });
+async function emailPdf(file, to, subject){ return api("POST", "/api/mail", {to, subject, filename: file.name, pdf: await fileB64(file)}); }
+const SHARE_HINT = who => canShareFiles ? `Opens your phone's share menu with the PDF attached. Pick Gmail or Outlook, then paste ${who} into the To line (it's copied for you).` : "Download the PDF, then use Open email and attach it from your Downloads.";
+function unlock(){ checkMail(); document.body.classList.remove("locked"); const mgr = !(auth && auth.role === "manager"); $("#role-pill").hidden = mgr; $("#role-pill-home").hidden = mgr; route(); loadJobs(); loadIncidents(); }
 $("#gate-form").addEventListener("submit", async e => {
   e.preventDefault();
   const code = $("#gate-code").value.trim(), err = $("#gate-err"), btn = $("#gate-go");
@@ -593,7 +599,7 @@ function renderSend(){
       <div><span class="hint">To:</span> <span class="addr">${esc(SEND_TO)}</span></div>
       <div class="btns"><button type="button" class="btn-hivis" id="btn-share">Send PDF to Sam</button><button type="button" id="btn-pdf">Download PDF</button></div>
       <div class="btns"><a class="btn" id="btn-mail" href="${mailHref(finished)}">Open email to Sam</a><button type="button" id="btn-copy">Copy email text</button></div>
-      <span class="hint" id="share-hint">${canShareFiles ? "Opens your phone's share menu with the PDF attached. Pick Gmail or Outlook, then paste Sam's address into the To line (it's copied for you)." : "Download the PDF, then use Open email to Sam and attach it from your Downloads."}</span>
+      <span class="hint" id="share-hint">${mailOn && !mailFailed ? "Emails the PDF straight to Sam from the NZCS Forms address." : SHARE_HINT("Sam's address")}</span>
       <div class="status" id="send-status" role="status"></div>
       <button type="button" class="btn-small btn-ghost" id="btn-done" style="justify-self:start">Done, start a new form</button></div>`;
     return;
@@ -975,6 +981,12 @@ function sendStatus(msg, bad){ const s = $("#send-status"); if (s){ s.className 
 async function sharePdf(){
   if (!finished) return;
   let file; try{ file = makeFile(finished); }catch(err){ return sendStatus(err.message, true); }
+  if (mailOn && !mailFailed){
+    const btn = $("#btn-share"); if (btn) btn.disabled = true; sendStatus("Sending…");
+    try{ await emailPdf(file, [SEND_TO], fileTitle(finished)); sendStatus("Sent to Sam (" + SEND_TO + ")."); if (btn){ btn.disabled = false; btn.textContent = "Send again"; } return; }
+    catch(err){ mailFailed = true; if (btn){ btn.disabled = false; btn.textContent = "Share PDF instead"; } const h = $("#share-hint"); if (h) h.textContent = SHARE_HINT("Sam's address");
+      return sendStatus((err.offline ? "No signal, so the email didn't send." : err.message) + " Tap Share PDF instead to use your phone's share menu.", true); }
+  }
   try{ navigator.clipboard && navigator.clipboard.writeText(SEND_TO).catch(() => {}); }catch(e){}
   if (canShareFiles){
     try{ await navigator.share({files:[file], title:fileTitle(finished)}); sendStatus("Shared. Check the email went to " + SEND_TO + "."); }
@@ -1165,6 +1177,9 @@ async function openInvestigation(id){
   }catch(err){ ENGINE.showMessage(`<section class="card"><p class="status bad">${esc(err.message)}</p></section>`); }
 }
 window.NZCS_HOOKS = {
+  mail: () => ({on: mailOn && !mailFailed}),
+  mailFailed: () => { mailFailed = true; },
+  emailPdf,
   submitIncident: body => api("POST", "/api/incidents", body),
   saveInvestigation: async (id, investigation, complete) => { const r = await api("PUT", `/api/incidents/${id}`, {investigation, complete}); loadIncidents(); return r; },
   deleteIncident: async id => { await api("DELETE", `/api/incidents/${id}`); loadIncidents(); },

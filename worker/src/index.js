@@ -2,6 +2,8 @@
 // Access is by share code: WORKER_CODE (staff) or MANAGER_CODE (can also delete jobs).
 // The codes are Cloudflare secrets, never stored in this repository.
 
+import { sendMail, mailReady, MAIL_TO_ALLOWED, MAX_PDF } from "./mail.js";
+
 const ALLOWED_ORIGINS = ["https://wade-14.github.io"];
 const MAX_BODY = 600_000;          // bytes; a day with a signature is ~30 KB
 const MAX_SIG = 250_000;           // characters of signature data URL
@@ -153,6 +155,23 @@ async function handle(req, env, ctx) {
   let m;
   // The worker share code, for the app's "Share the app" message (never the manager code)
   if (path === "/api/share-code" && req.method === "GET") return json(req, env, { code: env.WORKER_CODE || "" });
+  /* ---------- Email sending (PDF from the forms Gmail account) ---------- */
+  if (path === "/api/mail" && req.method === "GET") return json(req, env, { ready: mailReady(env) });
+  if (path === "/api/mail" && req.method === "POST") {
+    if (!mailReady(env)) return fail(req, env, 503, "Email sending isn't set up yet.");
+    const len = Number(req.headers.get("Content-Length") || 0);
+    if (len > MAX_PDF * 1.4) return fail(req, env, 413, "The PDF is too big to email. Take out some photos and try again.");
+    let body; try { body = JSON.parse(await req.text()); } catch { return fail(req, env, 400, "The app sent something unreadable. Reload and try again."); }
+    const to = Array.from(new Set((Array.isArray(body.to) ? body.to : []).map(t => String(t).trim().toLowerCase())));
+    if (!to.length || to.some(t => !MAIL_TO_ALLOWED.includes(t))) return fail(req, env, 400, "The app can only email the office addresses.");
+    const subject = str(body.subject, 200).replace(/[\r\n]+/g, " ").trim() || "NZCS form";
+    const filename = (str(body.filename, 200).replace(/[\r\n"\\/:*?<>|]+/g, "-").trim() || "NZCS form") .replace(/(\.pdf)?$/i, ".pdf");
+    const pdfB64 = String(body.pdf || "").replace(/\s+/g, "");
+    if (!/^JVBER/.test(pdfB64) || pdfB64.length > MAX_PDF * 1.37) return fail(req, env, 400, "The PDF didn't come through. Try again.");
+    try { await sendMail(env, { to, subject, filename, pdfB64 }); }
+    catch (err) { return fail(req, env, 502, "The email didn't send (" + String(err && err.message || "unknown problem").replace(/\.$/, "") + ")."); }
+    return json(req, env, { sent: true, to });
+  }
   /* ---------- Incident reports ---------- */
   // Anyone with a code can submit the employee's part; managers are alerted.
   if (path === "/api/incidents" && req.method === "POST") {
