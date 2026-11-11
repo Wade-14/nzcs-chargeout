@@ -596,7 +596,7 @@ const blank = () => ({mode:"new", jobId:null, jobName:"", dayId:null, dayNo:1,
 // Two charge outs that work the same way; each keeps its own draft, finished job and jobs in progress.
 // Jobs saved before the split (no kind) count as Pest Control.
 const CO_KINDS = {
-  pest:   {name:"Charge Out – Pest Control", pdf:"NZCS Charge Out - Pest Control", hash:"#charge-out-pest", key:"nzcs.chargeout.v4", fin:"nzcs.chargeout.finished"},
+  pest:   {name:"Charge Out – Pest Control", pdf:"NZCS Charge Out - Pest Control", hash:"#charge-out-pest", key:"nzcs.chargeout.v4", fin:"nzcs.chargeout.finished", tracking:true},
   enviro: {name:"Charge Out – Environmental Enhancement", pdf:"NZCS Charge Out - Environmental Enhancement", hash:"#charge-out-enviro", key:"nzcs.chargeout.enviro.v4", fin:"nzcs.chargeout.enviro.finished", tracking:true, matList:true},
 };
 let CO = "pest";

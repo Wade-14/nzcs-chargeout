@@ -60,7 +60,7 @@ To add a day to an existing job, open **Jobs in progress** and tap the job. To f
 
 A Charge Out you're filling in stays on your phone even if the app is closed.
 
-**Tracking time (Environmental Enhancement only):**
+**Tracking time (both Charge Outs, optional):**
 
 1. At the start of the day, type the job name (or open the job from Jobs in progress and tap Add day), then tap **Start tracking time now**. You can close the app.
 2. At the end of the day, open **Jobs in progress → Days being tracked** on any crew phone and tap the job. Tick who worked and tap **Stop tracking time**.
