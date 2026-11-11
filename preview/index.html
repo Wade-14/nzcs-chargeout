@@ -561,7 +561,7 @@ const ENVIRO_MATS = [
 const pickMats = () => typeof CO !== "undefined" && CO_KINDS[CO].matList;
 const blankPick = () => ({sel:"", other:"", qty:"", chem:"", nursery:"", plants:""});
 const blankMat = () => pickMats() ? blankPick() : {item:"", qty:""};
-const blankMats = () => pickMats() ? [blankMat(), blankMat(), blankMat()] : [blankMat()];
+const blankMats = () => [blankMat(), blankMat(), blankMat()];   // 3 material boxes to start on both Charge Outs
 const matInfo = sel => ENVIRO_MATS.find(x => x.name === sel) || {};
 // A picked row -> what is saved and printed ("Diluted chemical – other (chemical: X)", "15 L")
 function savedMat(m){
