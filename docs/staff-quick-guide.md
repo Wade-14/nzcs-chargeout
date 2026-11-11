@@ -46,6 +46,8 @@ All forms work the same way: fill in top to bottom, sign, then tap **Send PDF**.
 
 ## Charge Out
 
+There are two Charge Outs in the **Charge Out Forms** folder: **Charge Out – Pest Control** and **Charge Out – Environmental Enhancement**. Pick the one for the type of work. They work exactly the same way, and each has its own Jobs in progress.
+
 The Charge Out records each day on a job and goes to Sam once the job is finished. One job can run over several days and several phones.
 
 1. Fill in the day: job or farm, who worked, **hours worked and travelled for each person**, KMs, materials used and comments.

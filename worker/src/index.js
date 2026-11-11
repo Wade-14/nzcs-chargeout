@@ -7,7 +7,8 @@ import { sendMail, mailReady, MAIL_TO_ALLOWED, MAX_PDF } from "./mail.js";
 const ALLOWED_ORIGINS = ["https://wade-14.github.io"];
 const MAX_BODY = 600_000;          // bytes; a day with a signature is ~30 KB
 const MAX_SIG = 250_000;           // characters of signature data URL
-const KEEP_COMPLETED_DAYS = 365;   // completed jobs are removed after a year
+const KEEP_COMPLETED_DAYS = 365;
+const JOB_KINDS = ["pest", "enviro"];   // Charge Out – Pest Control / Environmental Enhancement   // completed jobs are removed after a year
 
 function cors(req, env) {
   const origin = req.headers.get("Origin") || "";
@@ -72,7 +73,7 @@ async function readBody(req) {
 
 async function jobSummaries(env, status) {
   const { results } = await env.DB.prepare(
-    `SELECT j.id, j.job_name, j.status, j.created_at, j.updated_at, j.completed_at,
+    `SELECT j.id, j.job_name, j.kind, j.status, j.created_at, j.updated_at, j.completed_at,
             COUNT(d.id) AS day_count, MAX(d.day_date) AS last_date
        FROM jobs j LEFT JOIN days d ON d.job_id = j.id
       WHERE j.status = ?1
@@ -237,11 +238,12 @@ async function handle(req, env, ctx) {
     const jobName = str(body.job_name, 200).trim();
     if (!jobName) return fail(req, env, 400, "Type the job name.");
     const day = cleanDay(body.day);
+    const kind = JOB_KINDS.includes(body.kind) ? body.kind : "pest";
     const t = now(), jobId = uid(), dayId = uid();
     const complete = !!body.complete;
     await env.DB.batch([
-      env.DB.prepare("INSERT INTO jobs (id, job_name, status, created_at, updated_at, completed_at) VALUES (?1, ?2, ?3, ?4, ?4, ?5)")
-        .bind(jobId, jobName, complete ? "complete" : "open", t, complete ? t : null),
+      env.DB.prepare("INSERT INTO jobs (id, job_name, kind, status, created_at, updated_at, completed_at) VALUES (?1, ?2, ?6, ?3, ?4, ?4, ?5)")
+        .bind(jobId, jobName, complete ? "complete" : "open", t, complete ? t : null, kind),
       env.DB.prepare("INSERT INTO days (id, job_id, day_date, data, signature, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)")
         .bind(dayId, jobId, day.date, JSON.stringify(day.data), day.signature, t),
     ]);

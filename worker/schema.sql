@@ -2,6 +2,7 @@
 CREATE TABLE IF NOT EXISTS jobs (
   id            TEXT PRIMARY KEY,
   job_name      TEXT NOT NULL,
+  kind          TEXT NOT NULL DEFAULT 'pest',   -- 'pest' (Pest Control) or 'enviro' (Environmental Enhancement)
   status        TEXT NOT NULL DEFAULT 'open',   -- 'open' (in progress) or 'complete'
   created_at    TEXT NOT NULL,
   updated_at    TEXT NOT NULL,
