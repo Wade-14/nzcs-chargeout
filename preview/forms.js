@@ -696,6 +696,38 @@ FORMS.accessOther = (() => {
   })}));
   return f;
 })();
+FORMS.visitor = {
+  hash: "#visitor-induction",
+  title: "Visitor Induction",
+  pdfTitle: "NZCS Visitor Induction",
+  blurb: "Induct a visitor on site: hazards, emergency procedures, safety rules and sign-off.",
+  sendTo: ["team@nzconservation.nz", "operations@nzconservation.nz"],
+  sendToLabel: "Wade and Gareth",
+  icon: '<circle cx="12" cy="7.5" r="3.5"/><path d="M5 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2"/><path d="M15.5 4.5l1.5 1.5 3-3"/>',
+  titleFrom: v => `${v.visitorName || "Visitor"} ${dmy(v.when)}`,
+  sections: [
+    { title: "General details", fields: [
+      { id:"when", type:"datetime", label:"Date and time", required:true },
+      { id:"visitorName", type:"text", label:"Name of visitor", required:true },
+      { id:"company", type:"text", label:"Name of company" },
+      { id:"project", type:"text", label:"Project", placeholder:"Farm name, landowner or location" },
+    ]},
+    { title: "Other information", fields: [
+      { id:"introduced", type:"choice", options:YN, alertIf:"No", label:"Visitor introduced to staff?" },
+      { id:"emergency", type:"choice", options:YN, alertIf:"No", label:"Emergency procedures explained?" },
+      { id:"hazards", type:"choice", options:YN, alertIf:"No", label:"Hazards and risks they will be exposed to explained?" },
+      { id:"rules", type:"choice", options:YN, alertIf:"No", label:"Safety rules explained?" },
+      { id:"ppe", type:"choice", options:YN, alertIf:"No", label:"PPE checked?" },
+    ]},
+    { title: "Acceptance and sign off", fields: [
+      { id:"acknowledge", type:"checklist", requireAll:true, required:true, okText:"Accepted", label:"The visitor ticks each statement to accept it",
+        options:["I acknowledge that I have had explained to me the hazards that I may encounter on this operational site.",
+                 "I will comply with NZ Conservation Services Ltd Health and Safety Policies and Procedures.",
+                 "I will follow instructions given to me by authorised Best Pest Control staff."] },
+      { id:"signatures", type:"signatures", freeName:true, label:"Visitor signature", required:true },
+    ]},
+  ],
+};
 window.NZCS_ONEOFF = FORMS;
 
 /* ---------------- State (memory only) ---------------- */
@@ -758,7 +790,7 @@ function peopleList(form){ return Array.from(new Set(STAFF().concat(form.extraPe
 function fieldHTML(form, f, v){
   const id = f.id ? `g-${f.id}` : "";
   const req = f.required ? ` <span class="hint">(required)</span>` : "";
-  const err = f.id ? `<span class="err" id="${id}-err" hidden>${f.type === "signatures" ? "Add at least one signature." : "This one is needed."}</span>` : "";
+  const err = f.id ? `<span class="err" id="${id}-err" hidden>${f.type === "signatures" ? "Add at least one signature." : f.requireAll ? "Tick every statement to accept them." : "This one is needed."}</span>` : "";
   switch (f.type){
     case "fixed":
       return `<div class="field"><span class="label">${esc(f.label)}</span><div class="fixed-val">${esc(f.value)}</div></div>`;
@@ -1145,6 +1177,7 @@ function validate(){
     if (!f.required || (f.showIf && !f.showIf(v))) return;
     let ok = true;
     if (f.type === "signatures") ok = v[f.id].some(x => x.sig);
+    else if (f.type === "checklist" && f.requireAll) ok = f.options.every(o => v[f.id].includes(o));
     else if (f.type === "productRows") ok = v[f.id].some(r => r.product && String(r.qty).trim() && (r.product !== "Other" || String(r.other).trim()));
     else if (Array.isArray(v[f.id])) ok = v[f.id].length > 0;
     else ok = String(v[f.id] || "").trim() !== "";
@@ -1198,7 +1231,7 @@ function buildPDF(){
       if (f.type === "notice"){ rows.push([{content:(f.title ? f.title + (f.text ? ": " : "") : "") + f.text, colSpan:2, styles:{fontStyle:"italic", textColor:[70,80,72], fillColor:[247,248,245]}}]); return; }
       if (f.type === "signatures" || f.type === "photos" || f.type === "tally") return;
       if (f.type === "checklist"){ f.options.forEach(o => {
-        if (v[f.id].includes(o)) rows.push([o, "Checked OK"]);
+        if (v[f.id].includes(o)) rows.push([o, f.okText || "Checked OK"]);
         else if (f.alertUnticked) rows.push([{content:o, styles:{textColor:RED}}, {content:"NOT TICKED  (needs attention)", styles:{textColor:RED, fontStyle:"bold", fillColor:[251,228,226]}}]);
         else rows.push([o, "NOT TICKED"]);
       }); return; }
