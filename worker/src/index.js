@@ -168,7 +168,8 @@ async function handle(req, env, ctx) {
     const filename = (str(body.filename, 200).replace(/[\r\n"\\/:*?<>|]+/g, "-").trim() || "NZCS form") .replace(/(\.pdf)?$/i, ".pdf");
     const pdfB64 = String(body.pdf || "").replace(/\s+/g, "");
     if (!/^JVBER/.test(pdfB64) || pdfB64.length > MAX_PDF * 1.37) return fail(req, env, 400, "The PDF didn't come through. Try again.");
-    try { await sendMail(env, { to, subject, filename, pdfB64 }); }
+    const text = str(body.text, 4000).trim();
+    try { await sendMail(env, { to, subject, filename, pdfB64, text }); }
     catch (err) { return fail(req, env, 502, "The email didn't send (" + String(err && err.message || "unknown problem").replace(/\.$/, "") + ")."); }
     return json(req, env, { sent: true, to });
   }

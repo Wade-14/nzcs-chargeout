@@ -510,7 +510,16 @@ function lock(msg){ store.del(AUTH_KEY); auth = null; document.body.classList.ad
 let mailOn = false, mailFailed = false;
 async function checkMail(){ try{ mailOn = !!(await api("GET", "/api/mail")).ready; }catch(e){ mailOn = false; } }
 const fileB64 = file => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1] || ""); r.onerror = () => bad(new Error("Couldn't read the PDF.")); r.readAsDataURL(file); });
-async function emailPdf(file, to, subject){ return api("POST", "/api/mail", {to, subject, filename: file.name, pdf: await fileB64(file)}); }
+// Short summary shown above the PDF in the email: form, when sent, job / purpose, staff.
+function emailText(form, purpose, staff){
+  const d = new Date(), p2 = x => String(x).padStart(2, "0");
+  const h = d.getHours(), when = `${p2(d.getDate())}-${p2(d.getMonth() + 1)}-${d.getFullYear()} ${h % 12 || 12}:${p2(d.getMinutes())} ${h < 12 ? "am" : "pm"}`;
+  const L = ["Form: " + form, "Sent: " + when];
+  if (purpose) L.push("Job / purpose: " + purpose);
+  if (staff && staff.length) L.push("Staff: " + staff.join(", "));
+  return L.join("\n");
+}
+async function emailPdf(file, to, subject, text){ return api("POST", "/api/mail", {to, subject, filename: file.name, pdf: await fileB64(file), text: text || ""}); }
 const SHARE_HINT = who => canShareFiles ? `Opens your phone's share menu with the PDF attached. Pick Gmail or Outlook, then paste ${who} into the To line (it's copied for you).` : "Download the PDF, then use Open email and attach it from your Downloads.";
 function unlock(){ checkMail(); document.body.classList.remove("locked"); const mgr = !(auth && auth.role === "manager"); $("#role-pill").hidden = mgr; $("#role-pill-home").hidden = mgr; route(); loadJobs(); loadIncidents(); }
 $("#gate-form").addEventListener("submit", async e => {
@@ -983,7 +992,7 @@ async function sharePdf(){
   let file; try{ file = makeFile(finished); }catch(err){ return sendStatus(err.message, true); }
   if (mailOn && !mailFailed){
     const btn = $("#btn-share"); if (btn) btn.disabled = true; sendStatus("Sending…");
-    try{ await emailPdf(file, [SEND_TO], fileTitle(finished)); sendStatus("Sent to Sam (" + SEND_TO + ")."); if (btn){ btn.disabled = false; btn.textContent = "Send again"; } return; }
+    try{ await emailPdf(file, [SEND_TO], fileTitle(finished), emailText("Staff Charge Out", finished.job_name, Array.from(new Set(finished.days.flatMap(d => d.people || []))))); sendStatus("Sent to Sam (" + SEND_TO + ")."); if (btn){ btn.disabled = false; btn.textContent = "Send again"; } return; }
     catch(err){ mailFailed = true; if (btn){ btn.disabled = false; btn.textContent = "Share PDF instead"; } const h = $("#share-hint"); if (h) h.textContent = SHARE_HINT("Sam's address");
       return sendStatus((err.offline ? "No signal, so the email didn't send." : err.message) + " Tap Share PDF instead to use your phone's share menu.", true); }
   }
@@ -1179,7 +1188,7 @@ async function openInvestigation(id){
 window.NZCS_HOOKS = {
   mail: () => ({on: mailOn && !mailFailed}),
   mailFailed: () => { mailFailed = true; },
-  emailPdf,
+  emailPdf, emailText,
   submitIncident: body => api("POST", "/api/incidents", body),
   saveInvestigation: async (id, investigation, complete) => { const r = await api("PUT", `/api/incidents/${id}`, {investigation, complete}); loadIncidents(); return r; },
   deleteIncident: async id => { await api("DELETE", `/api/incidents/${id}`); loadIncidents(); },

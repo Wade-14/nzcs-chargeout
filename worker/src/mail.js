@@ -15,7 +15,7 @@ const wrap = (s, n = 76) => s.replace(new RegExp(`(.{${n}})`, "g"), "$1\r\n");
 
 export const mailReady = env => !!(env.MAIL_USER && env.MAIL_PASSWORD);
 
-function buildMessage({ from, to, subject, filename, pdfB64 }) {
+function buildMessage({ from, to, subject, filename, pdfB64, text }) {
   const boundary = "nzcs-" + crypto.randomUUID();
   const name = encWord(filename).replace(/"/g, "");
   return [
@@ -27,6 +27,13 @@ function buildMessage({ from, to, subject, filename, pdfB64 }) {
     "MIME-Version: 1.0",
     `Content-Type: multipart/mixed; boundary="${boundary}"`,
     "",
+    ...(text ? [
+      `--${boundary}`,
+      "Content-Type: text/plain; charset=UTF-8",
+      "Content-Transfer-Encoding: base64",
+      "",
+      wrap(b64(text.replace(/\r?\n/g, "\r\n"))),
+    ] : []),
     `--${boundary}`,
     `Content-Type: application/pdf; name="${name}"`,
     "Content-Transfer-Encoding: base64",
@@ -38,7 +45,7 @@ function buildMessage({ from, to, subject, filename, pdfB64 }) {
   ].join("\r\n");
 }
 
-export async function sendMail(env, { to, subject, filename, pdfB64 }) {
+export async function sendMail(env, { to, subject, filename, pdfB64, text }) {
   const host = env.MAIL_HOST || "smtp.gmail.com", port = Number(env.MAIL_PORT || 465);
   const tls = (env.MAIL_TLS || "on") !== "off";
   const sock = connect({ hostname: host, port }, { secureTransport: tls ? "on" : "off", allowHalfOpen: false });
@@ -75,7 +82,7 @@ export async function sendMail(env, { to, subject, filename, pdfB64 }) {
     await step(`MAIL FROM:<${String(env.MAIL_USER).trim()}>`, 250, "Sending");
     for (const t of to) await step(`RCPT TO:<${t}>`, 250, "Adding " + t);
     await step("DATA", 354, "Sending");
-    const msg = buildMessage({ from: String(env.MAIL_USER).trim(), to, subject, filename, pdfB64 }).replace(/\r\n\./g, "\r\n..");
+    const msg = buildMessage({ from: String(env.MAIL_USER).trim(), to, subject, filename, pdfB64, text }).replace(/\r\n\./g, "\r\n..");
     await writer.write(enc.encode(msg + "\r\n.\r\n"));
     await step(null, 250, "Sending the email");
     try { await send("QUIT"); } catch {}

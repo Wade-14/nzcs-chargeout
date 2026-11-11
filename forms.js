@@ -1040,6 +1040,14 @@ async function saveInvestigation(complete, btn){
     } else status("Saved. You can come back to it from the incident list.");
   }catch(err){ btn.disabled = false; status(err.offline ? "No signal. Try again when you have signal." : err.message, true); }
 }
+// Names for the email summary: the form's staff field (minus "Other") plus any typed-in names.
+function staffNames(form, v){
+  if (!form.staffField) return [];
+  const raw = v[form.staffField], list = (Array.isArray(raw) ? raw : [raw]).filter(n => n && n !== "Other");
+  const typed = String(v[form.staffField + "Other"] || "").trim();
+  return Array.from(new Set(typed ? list.concat(typed) : list));
+}
+const purposeOf = (form, v) => String(form.titleFrom(v) || "").replace(/\s*\d{2}-\d{2}-\d{4}$/, "").trim();
 const mailOn = () => !!(window.NZCS_HOOKS && window.NZCS_HOOKS.mail && window.NZCS_HOOKS.mail().on);
 const shareHint = () => mailOn() ? "Emails the PDF straight to them from the NZCS Forms address."
   : canShareFiles ? "Opens your phone's share menu with the PDF attached. Pick Gmail or Outlook, then paste the addresses into the To line (they're copied for you)." : "Download the PDF, then use Open email and attach it from your Downloads.";
@@ -1423,7 +1431,7 @@ async function share(){
   const to = FORMS[current].sendTo.join(", ");
   if (mailOn()){
     const btn = $("#g-share"); if (btn) btn.disabled = true; status("Sending…");
-    try{ await window.NZCS_HOOKS.emailPdf(file, FORMS[current].sendTo, file.name.replace(/\.pdf$/, "")); status("Sent to " + FORMS[current].sendToLabel + " (" + to + "). Tap Clear form when you're done."); if (btn){ btn.disabled = false; btn.textContent = "Send again"; } return; }
+    try{ await window.NZCS_HOOKS.emailPdf(file, FORMS[current].sendTo, file.name.replace(/\.pdf$/, ""), window.NZCS_HOOKS.emailText(FORMS[current].title, purposeOf(FORMS[current], values()), staffNames(FORMS[current], values()))); status("Sent to " + FORMS[current].sendToLabel + " (" + to + "). Tap Clear form when you're done."); if (btn){ btn.disabled = false; btn.textContent = "Send again"; } return; }
     catch(err){ window.NZCS_HOOKS.mailFailed(); if (btn){ btn.disabled = false; btn.textContent = "Share PDF instead"; } const h = $("#g-share-hint"); if (h) h.textContent = shareHint();
       return status((err.offline ? "No signal, so the email didn't send." : err.message) + " Tap Share PDF instead to use your phone's share menu.", true); }
   }
