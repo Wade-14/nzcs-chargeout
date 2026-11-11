@@ -623,7 +623,7 @@ FORMS.access = {
       { id:"signee", type:"text", label:"Landowner / occupier / signee name", required:true },
       { id:"contractor", type:"fixed", label:"Contractor", value:"Toby Haliday - NZ Conservation Services Ltd" },
       { id:"esStaff", type:"fixed", label:"ES staff", value:"Kaitlin McKenzie - 021 422 703, Raoul Thomas - 027 344 3526" },
-      { id:"date", type:"date", today:true, label:"Date(s) property to be worked", required:true },
+      { id:"date", type:"date", today:true, label:"Date signed (the property can be worked from this date)", required:true },
       { type:"notice", title:"Permission", text:"I give permission to the ES staff, their contractor and sub contractors/employees named on this form, to enter onto my land to carry out the biosecurity activities as discussed and agreed with me. In giving this approval I acknowledge that the contractor has an obligation to manage their own and their sub contractors/employees Health and Safety while working on my property." },
     ]},
     { title: "Activities discussed", fields: [
@@ -673,7 +673,6 @@ FORMS.access = {
     { title: "Disclosure and signature", fields: [
       { type:"notice", title:"Disclosure", text:"1. The landowner/occupier is responsible for making the contractor aware of any unusual hazards that would not normally be encountered on a farming property.\n2. The contractor acknowledges that they are responsible for damage to property due to their actions.\n3. All contractors contracted to Environment Southland have an assessed Health and Safety management plan.\n4. Public Liability insurance ($2,000,000) - All contractors provide evidence to the council that they hold a current policy and it includes rural forest and fire protection ($500,000).\n5. The contractor agrees to keep the landowner/occupier fully informed throughout the term of the work." },
       { id:"ownerSignatures", type:"signatures", freeName:true, label:"Landowner / occupier signature", required:true },
-      { id:"signDate", type:"date", today:true, label:"Date" },
     ]},
   ],
 };
