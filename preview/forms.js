@@ -605,6 +605,78 @@ FORMS.poison = {
     ]},
   ],
 };
+/* Landowner access agreement (PCA properties). A "Discussed" tick per activity shows its follow-up questions. */
+const DISC = ["Discussed"];
+const disc = id => v => v[id] === "Discussed";
+FORMS.access = {
+  hash: "#access-agreement",
+  title: "Landowner Access Agreement for PCA Properties",
+  pdfTitle: "NZCS Landowner Access Agreement",
+  blurb: "Landowner permission for biosecurity work on a PCA property, with activities discussed and signature.",
+  sendTo: ["team@nzconservation.nz", "operations@nzconservation.nz"],
+  sendToLabel: "Wade and Gareth",
+  icon: '<path d="M3 21h18"/><path d="M5 21V10l7-5 7 5v11"/><path d="M9.5 14.5l2 2 3.5-4"/>',
+  titleFrom: v => `${v.pca || "PCA"} ${dmy(v.date || "")}`.trim(),
+  sections: [
+    { title: "Agreement details", fields: [
+      { id:"pca", type:"text", label:"PCA name", required:true },
+      { id:"signee", type:"text", label:"Landowner / occupier / signee name", required:true },
+      { id:"contractor", type:"fixed", label:"Contractor", value:"Toby Haliday - NZ Conservation Services Ltd" },
+      { id:"esStaff", type:"fixed", label:"ES staff", value:"Kaitlin McKenzie - 021 422 703, Raoul Thomas - 027 344 3526" },
+      { id:"date", type:"date", today:true, label:"Date(s) property to be worked", required:true },
+      { type:"notice", title:"Permission", text:"I give permission to the ES staff, their contractor and sub contractors/employees named on this form, to enter onto my land to carry out the biosecurity activities as discussed and agreed with me. In giving this approval I acknowledge that the contractor has an obligation to manage their own and their sub contractors/employees Health and Safety while working on my property." },
+    ]},
+    { title: "Activities discussed", fields: [
+      { id:"trapDisc", type:"choice", options:DISC, label:"Possum trapping - leg hold / kill trap" },
+      { id:"trapTypes", type:"multi", label:"Possum trapping type", options:["Leg hold","Kill trap","Live capture"], showIf:disc("trapDisc") },
+      { id:"trapOk", type:"choice", options:YN, label:"OK to trap possums (if required)?", showIf:disc("trapDisc") },
+      { id:"feratoxDisc", type:"choice", options:DISC, label:"Cyanide - Feratox pellets" },
+      { id:"feratoxOk", type:"choice", options:YN, label:"OK to use cyanide / Feratox pellets?", showIf:disc("feratoxDisc") },
+      { id:"feratoxNotes", type:"textarea", label:"Comments / conditions", showIf:disc("feratoxDisc") },
+      { id:"pasteDisc", type:"choice", options:DISC, label:"Cyanide paste" },
+      { id:"pasteOk", type:"choice", options:YN, label:"OK to use cyanide paste?", showIf:disc("pasteDisc") },
+      { id:"pasteNotes", type:"textarea", label:"Comments / conditions", showIf:disc("pasteDisc") },
+      { id:"otherDisc", type:"choice", options:DISC, label:"Other (specify and discuss)" },
+      { id:"otherWhat", type:"text", label:"Other activity", showIf:disc("otherDisc") },
+      { id:"otherNotes", type:"textarea", label:"Comments / conditions", showIf:disc("otherDisc") },
+      { id:"baitDisc", type:"choice", options:DISC, label:"Possum bait station setup and baiting" },
+      { id:"baitTypes", type:"multi", label:"Bait station type", options:["Sentry","Sentry Plus","Mini Philproof","Bait Safe","Kilmore"], showIf:disc("baitDisc") },
+      { id:"baitNotes", type:"textarea", label:"Comments / conditions", showIf:disc("baitDisc") },
+      { id:"hsbDisc", type:"choice", options:DISC, label:"High strength brodifacoum (HSB)" },
+      { id:"hsbOk", type:"choice", options:YN, label:"OK to use HSB (if required)?", showIf:disc("hsbDisc") },
+      { id:"hsbNotes", type:"textarea", label:"Comments / conditions", showIf:disc("hsbDisc") },
+    ]},
+    { title: "Control details discussed", fields: [
+      { id:"farmDisc", type:"choice", options:DISC, label:"Farming activities to note" },
+      { id:"farmNotes", type:"textarea", label:"Comments / conditions", showIf:disc("farmDisc") },
+      { id:"treeDisc", type:"choice", options:DISC, label:"Tree felling / harvesting planned" },
+      { id:"treeNotes", type:"textarea", label:"Comments / conditions", showIf:disc("treeDisc") },
+      { id:"detailsDisc", type:"choice", options:DISC, label:"Contractor's details left" },
+      { id:"detailsNotes", type:"textarea", label:"Comments / conditions", showIf:disc("detailsDisc") },
+      { id:"vehiclesDisc", type:"choice", options:DISC, label:"Staff / contractor vehicles to be left on property" },
+      { id:"vehiclesNotes", type:"textarea", label:"Comments / conditions", showIf:disc("vehiclesDisc") },
+      { id:"recoveryDisc", type:"choice", options:DISC, label:"Commercial feral animal recovery activity" },
+      { id:"recoveryNotes", type:"textarea", label:"Comments / conditions", showIf:disc("recoveryDisc") },
+      { id:"ctrlOtherDisc", type:"choice", options:DISC, label:"Other" },
+      { id:"ctrlOtherNotes", type:"textarea", label:"Comments / conditions", showIf:disc("ctrlOtherDisc") },
+    ]},
+    { title: "Hazards", fields: [
+      // HAZARD_TEXT: Wade to send the pre-filled hazards wording
+      { id:"unusualHazards", type:"textarea", label:"Unusual hazards (list)" },
+    ]},
+    { title: "Landowner / occupier details", fields: [
+      { id:"ownerName", type:"text", label:"Name", required:true },
+      { id:"ownerAddress", type:"textarea", label:"Property address, and mailing address if different" },
+      { id:"ownerPhone", type:"text", label:"Phone number" },
+      { id:"ownerEmail", type:"text", label:"Email" },
+    ]},
+    { title: "Disclosure and signature", fields: [
+      // DISCLOSURE_TEXT: Wade to send the disclosure wording
+      { id:"ownerSignatures", type:"signatures", freeName:true, label:"Landowner / occupier signature", required:true },
+      { id:"signDate", type:"date", today:true, label:"Date" },
+    ]},
+  ],
+};
 window.NZCS_ONEOFF = FORMS;
 
 /* ---------------- State (memory only) ---------------- */
@@ -622,7 +694,8 @@ const blankValues = form => {
               f.type === "checklist" ? [] :
               f.type === "datetime" ? nowLocal() :
               f.type === "location" ? {address:"", lat:null, lng:null} :
-              f.type === "fixed" ? f.value : "";
+              f.type === "fixed" ? f.value :
+              f.type === "date" && f.today ? todayISO() : "";
   }));
   return v;
 };
@@ -734,9 +807,9 @@ function fieldHTML(form, f, v){
       const names = peopleList(form);
       return `<div class="field"><span class="label">${esc(f.label)}${req}</span><div class="sigs">` + list.map((s,i) => `
         <div class="sig-item">
-          <div class="sig-item-head"><select id="${id}-${i}-name" data-gsn="${f.id}" data-i="${i}" aria-label="Who is signing"><option value="">Who is signing?</option>${names.map(nm => `<option ${s.name === nm ? "selected" : ""}>${esc(nm)}</option>`).join("")}<option value="__other" ${s.other || (s.name && !names.includes(s.name)) ? "selected" : ""}>Visitor / other</option></select>
+          <div class="sig-item-head">${f.freeName ? `<input type="text" id="${id}-${i}-other" data-gso="${f.id}" data-i="${i}" placeholder="Name of person signing" value="${esc(s.name)}" autocomplete="off">` : `<select id="${id}-${i}-name" data-gsn="${f.id}" data-i="${i}" aria-label="Who is signing"><option value="">Who is signing?</option>${names.map(nm => `<option ${s.name === nm ? "selected" : ""}>${esc(nm)}</option>`).join("")}<option value="__other" ${s.other || (s.name && !names.includes(s.name)) ? "selected" : ""}>Visitor / other</option></select>`}
             <button type="button" class="btn-small btn-ghost" data-sigclear="${i}" data-sigfield="${f.id}">Clear</button>${list.length > 1 ? `<button type="button" class="icon-btn" data-sigdel="${i}" data-sigfield="${f.id}" aria-label="Remove signature ${i+1}">×</button>` : ""}</div>
-          ${s.name && !names.includes(s.name) || s.other ? `<input type="text" id="${id}-${i}-other" data-gso="${f.id}" data-i="${i}" placeholder="Visitor's name and company" value="${esc(names.includes(s.name) ? "" : s.name)}">` : ""}
+          ${!f.freeName && (s.name && !names.includes(s.name) || s.other) ? `<input type="text" id="${id}-${i}-other" data-gso="${f.id}" data-i="${i}" placeholder="Visitor's name and company" value="${esc(names.includes(s.name) ? "" : s.name)}">` : ""}
           <div class="sig-wrap small"><div class="sig-line"></div><canvas data-gsig="${f.id}" data-i="${i}"></canvas><div class="sig-hint" ${s.sig ? "hidden" : ""}>Sign here</div></div>
         </div>`).join("") + `</div><button type="button" class="btn-small btn-ghost" data-sigadd="${f.id}" style="justify-self:start">+ Add signature</button>${err}</div>`;
     }
