@@ -697,6 +697,7 @@ FORMS.accessOther = (() => {
   return f;
 })();
 FORMS.visitor = {
+  staffField: "inductedBy",
   hash: "#visitor-induction",
   title: "Visitor Induction",
   pdfTitle: "NZCS Visitor Induction",
@@ -708,6 +709,7 @@ FORMS.visitor = {
   sections: [
     { title: "General details", fields: [
       { id:"when", type:"datetime", label:"Date and time", required:true },
+      { id:"inductedBy", type:"person", label:"Inducted by", required:true },
       { id:"visitorName", type:"text", label:"Name of visitor", required:true },
       { id:"company", type:"text", label:"Name of company" },
       { id:"project", type:"text", label:"Project", placeholder:"Farm name, landowner or location" },
@@ -723,7 +725,7 @@ FORMS.visitor = {
       { id:"acknowledge", type:"checklist", requireAll:true, required:true, okText:"Accepted", label:"The visitor ticks each statement to accept it",
         options:["I acknowledge that I have had explained to me the hazards that I may encounter on this operational site.",
                  "I will comply with NZ Conservation Services Ltd Health and Safety Policies and Procedures.",
-                 "I will follow instructions given to me by authorised Best Pest Control staff."] },
+                 "I will follow instructions given to me by authorised NZ Conservation Services staff."] },
       { id:"signatures", type:"signatures", freeName:true, label:"Visitor signature", required:true },
     ]},
   ],
