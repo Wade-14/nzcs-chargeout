@@ -730,6 +730,42 @@ FORMS.visitor = {
     ]},
   ],
 };
+FORMS.training = {
+  staffField: "trainees",
+  hash: "#training-record",
+  title: "Training Record",
+  pdfTitle: "NZCS Training Record",
+  blurb: "Record training given: topics, trainees, trainer, course length and sign-off.",
+  sendTo: ["team@nzconservation.nz", "operations@nzconservation.nz"],
+  sendToLabel: "Wade and Gareth",
+  icon: '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2 9 2 12 0v-5"/><path d="M22 9v6"/>',
+  titleFrom: v => `${(v.topics || "Training").split(/\n|[.,]/)[0].trim().slice(0, 40) || "Training"} ${dmy(v.when)}`,
+  sections: [
+    { title: "Details", fields: [
+      { id:"when", type:"datetime", label:"Date and time", required:true },
+      { id:"location", type:"location", label:"Location" },
+      { id:"toolbox", type:"choice", options:YN, label:"Has the daily toolbox meeting been completed?" },
+      { id:"trainees", type:"people", label:"Trainees present", other:true, required:true },
+      { id:"traineesOther", type:"text", label:"Other trainees (names)", showIf:v => (v.trainees||[]).includes("Other") },
+    ]},
+    { title: "Training record", fields: [
+      { id:"topics", type:"textarea", label:"Training outline / topics covered", required:true },
+      { id:"meetsReq", type:"choice", options:YN, label:"Does the trainee / do the trainees meet the basic level of requirements?" },
+      { id:"improvements", type:"textarea", label:"Comments / improvements to be actioned. State who, why and what needs to be done" },
+      { id:"howOften", type:"choice", label:"If so, how often?", options:["Annually","Monthly","As needed"] },
+      { id:"length", type:"choice", label:"Length of course", options:["30 mins","1 hour","Half day","Full day"] },
+    ]},
+    { title: "Trainer", fields: [
+      { id:"presenter", type:"people", label:"Presenter / instructor", options:["Toby Haliday","Gareth Coyle","Tad Schultz","Wade McSoriley"] },
+      { id:"external", type:"text", label:"External trainer (name and company)" },
+      { id:"trainerSignatures", type:"signatures", label:"Signature (trainer)", required:true },
+    ]},
+    { title: "Trainee sign off", fields: [
+      { type:"notice", text:"By signing this document I understand and will conform with the training I've been provided." },
+      { id:"traineeSignatures", type:"signatures", label:"Signature (trainees)", required:true },
+    ]},
+  ],
+};
 window.NZCS_ONEOFF = FORMS;
 
 /* ---------------- State (memory only) ---------------- */
