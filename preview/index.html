@@ -558,11 +558,21 @@ const ENVIRO_MATS = [
   {name:"Plants – other nursery supply", unit:"units", ask:[{key:"nursery", tag:"nursery", label:"Which nursery?", err:"Type the nursery.", ph:"Nursery name"}, {key:"plants", tag:"plants", label:"What plants?", err:"Type what plants they were.", ph:"Plant types"}]},
   {name:"Fertiliser"},
 ];
-const pickMats = () => typeof CO !== "undefined" && CO_KINDS[CO].matList;
+// Pest Control list (Wade, 11-11-2026). No units given yet, so staff type the amount and unit.
+const PEST_MATS = [
+  {name:"Feratox pills"},
+  {name:"Feratox bio bags"},
+  {name:"High strength brodifacoum (HSB)"},
+  {name:"Sentry"},
+  {name:"Sentry Plus"},
+  {name:"Pre-feed"},
+];
+const MATS = () => (typeof CO !== "undefined" && CO_KINDS[CO].mats) || [];
+const pickMats = () => MATS().length > 0;
 const blankPick = () => ({sel:"", other:"", qty:"", chem:"", nursery:"", plants:""});
 const blankMat = () => pickMats() ? blankPick() : {item:"", qty:""};
 const blankMats = () => [blankMat(), blankMat(), blankMat()];   // 3 material boxes to start on both Charge Outs
-const matInfo = sel => ENVIRO_MATS.find(x => x.name === sel) || {};
+const matInfo = sel => MATS().find(x => x.name === sel) || {};
 // A picked row -> what is saved and printed ("Diluted chemical – other (chemical: X)", "15 L")
 function savedMat(m){
   if (!("sel" in m)) return m;
@@ -574,7 +584,7 @@ function savedMat(m){
 // ...and back again when a saved day is edited
 function pickedMat(m){
   if (!(m.item || "").trim() && !(m.qty || "").trim()) return blankPick();
-  const info = ENVIRO_MATS.find(x => m.item === x.name || (x.ask && m.item.startsWith(x.name + " (")));
+  const info = MATS().find(x => m.item === x.name || (x.ask && m.item.startsWith(x.name + " (")));
   const unitRe = info && info.unit ? new RegExp("\\s*" + info.unit + "$") : null;
   const row = Object.assign(blankPick(), {qty: unitRe ? String(m.qty || "").replace(unitRe, "") : (m.qty || "")});
   if (!info) return Object.assign(row, {sel:"Other", other:m.item});
@@ -596,8 +606,8 @@ const blank = () => ({mode:"new", jobId:null, jobName:"", dayId:null, dayNo:1,
 // Two charge outs that work the same way; each keeps its own draft, finished job and jobs in progress.
 // Jobs saved before the split (no kind) count as Pest Control.
 const CO_KINDS = {
-  pest:   {name:"Charge Out – Pest Control", pdf:"NZCS Charge Out - Pest Control", hash:"#charge-out-pest", key:"nzcs.chargeout.v4", fin:"nzcs.chargeout.finished", tracking:true},
-  enviro: {name:"Charge Out – Environmental Enhancement", pdf:"NZCS Charge Out - Environmental Enhancement", hash:"#charge-out-enviro", key:"nzcs.chargeout.enviro.v4", fin:"nzcs.chargeout.enviro.finished", tracking:true, matList:true},
+  pest:   {name:"Charge Out – Pest Control", pdf:"NZCS Charge Out - Pest Control", hash:"#charge-out-pest", key:"nzcs.chargeout.v4", fin:"nzcs.chargeout.finished", tracking:true, mats:PEST_MATS},
+  enviro: {name:"Charge Out – Environmental Enhancement", pdf:"NZCS Charge Out - Environmental Enhancement", hash:"#charge-out-enviro", key:"nzcs.chargeout.enviro.v4", fin:"nzcs.chargeout.enviro.finished", tracking:true, mats:ENVIRO_MATS},
 };
 let CO = "pest";
 const kindOf = j => (j && CO_KINDS[j.kind]) ? j.kind : "pest";
@@ -747,7 +757,7 @@ function renderMaterials(){
       if (!("sel" in m)) m = state.materials[i] = pickedMat(m);
       const info = matInfo(m.sel);
       return `<div class="mat-row">
-      <div class="field"><label for="m-${i}-sel">Material</label><select id="m-${i}-sel" data-mi="${i}" data-mk="sel"><option value="">Pick a material</option>${ENVIRO_MATS.concat({name:"Other"}).map(o => `<option ${m.sel === o.name ? "selected" : ""}>${esc(o.name)}</option>`).join("")}</select></div>
+      <div class="field"><label for="m-${i}-sel">Material</label><select id="m-${i}-sel" data-mi="${i}" data-mk="sel"><option value="">Pick a material</option>${MATS().concat({name:"Other"}).map(o => `<option ${m.sel === o.name ? "selected" : ""}>${esc(o.name)}</option>`).join("")}</select></div>
       <div class="field"><label for="m-${i}-qty">Quantity${info.unit ? ` (${esc(info.unitLabel || info.unit)})` : ""}</label><input type="text" id="m-${i}-qty" autocomplete="off" ${info.unit ? 'inputmode="decimal"' : ""} data-mi="${i}" data-mk="qty" value="${esc(m.qty)}" placeholder="${info.unit ? "0" : "Amount"}"></div>
       <button type="button" class="icon-btn" id="m-${i}-del" data-mdel="${i}" aria-label="Remove material ${i+1}">×</button>
       ${m.sel === "Other" ? `<div class="field" style="grid-column:1/-1"><label for="m-${i}-other">What material?</label><input type="text" id="m-${i}-other" autocomplete="off" data-mi="${i}" data-mk="other" value="${esc(m.other)}" placeholder="Material"></div>` : ""}
