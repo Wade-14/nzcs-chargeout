@@ -70,12 +70,12 @@ export async function sendMail(env, { to, subject, filename, pdfB64 }) {
     await step(null, 220, "Connecting to the email server");
     await step("EHLO nzcs-forms", 250, "Greeting the email server");
     await step("AUTH LOGIN", 334, "Signing in");
-    await step(b64(env.MAIL_USER), 334, "Signing in");
-    await step(b64(env.MAIL_PASSWORD), 235, "Signing in");
-    await step(`MAIL FROM:<${env.MAIL_USER}>`, 250, "Sending");
+    await step(b64(String(env.MAIL_USER).trim()), 334, "Signing in");
+    await step(b64(String(env.MAIL_PASSWORD).replace(/\s+/g, "")), 235, "Signing in");
+    await step(`MAIL FROM:<${String(env.MAIL_USER).trim()}>`, 250, "Sending");
     for (const t of to) await step(`RCPT TO:<${t}>`, 250, "Adding " + t);
     await step("DATA", 354, "Sending");
-    const msg = buildMessage({ from: env.MAIL_USER, to, subject, filename, pdfB64 }).replace(/\r\n\./g, "\r\n..");
+    const msg = buildMessage({ from: String(env.MAIL_USER).trim(), to, subject, filename, pdfB64 }).replace(/\r\n\./g, "\r\n..");
     await writer.write(enc.encode(msg + "\r\n.\r\n"));
     await step(null, 250, "Sending the email");
     try { await send("QUIT"); } catch {}
