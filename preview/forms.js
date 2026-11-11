@@ -671,7 +671,7 @@ FORMS.access = {
       { id:"ownerEmail", type:"text", label:"Email" },
     ]},
     { title: "Disclosure and signature", fields: [
-      // DISCLOSURE_TEXT: Wade to send the disclosure wording
+      { type:"notice", title:"Disclosure", text:"1. The landowner/occupier is responsible for making the contractor aware of any unusual hazards that would not normally be encountered on a farming property.\n2. The contractor acknowledges that they are responsible for damage to property due to their actions.\n3. All contractors contracted to Environment Southland have an assessed Health and Safety management plan.\n4. Public Liability insurance ($2,000,000) - All contractors provide evidence to the council that they hold a current policy and it includes rural forest and fire protection ($500,000).\n5. The contractor agrees to keep the landowner/occupier fully informed throughout the term of the work." },
       { id:"ownerSignatures", type:"signatures", freeName:true, label:"Landowner / occupier signature", required:true },
       { id:"signDate", type:"date", today:true, label:"Date" },
     ]},
@@ -744,7 +744,7 @@ function fieldHTML(form, f, v){
     case "fixed":
       return `<div class="field"><span class="label">${esc(f.label)}</span><div class="fixed-val">${esc(f.value)}</div></div>`;
     case "notice":
-      return `<div class="notice">${f.title ? `<b>${esc(f.title)}</b>` : ""}${f.text ? `<p>${esc(f.text)}</p>` : ""}</div>`;
+      return `<div class="notice">${f.title ? `<b>${esc(f.title)}</b>` : ""}${f.text ? `<p>${esc(f.text).replace(/\n/g, "<br>")}</p>` : ""}</div>`;
     case "text":
       return `<div class="field"><label for="${id}">${esc(f.label)}${req}</label><input type="text" id="${id}" data-g="${f.id}" autocomplete="off" value="${esc(v[f.id])}" placeholder="${esc(f.placeholder || "")}">${err}</div>`;
     case "textarea":
