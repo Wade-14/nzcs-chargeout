@@ -766,6 +766,43 @@ FORMS.training = {
     ]},
   ],
 };
+FORMS.jobAudit = {
+  staffField: "audited",
+  hash: "#job-audit",
+  title: "Job Audit (Operators Not Present)",
+  pdfTitle: "NZCS Jobsite Audit",
+  blurb: "Audit a jobsite after the work's done: what was done well, what could be better, follow-ups.",
+  sendTo: ["team@nzconservation.nz", "operations@nzconservation.nz"],
+  sendToLabel: "Wade and Gareth",
+  icon: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/><path d="M8.5 11l2 2 3.5-3.5"/>',
+  titleFrom: v => `${v.job || "Job"} ${dmy(v.when)}`,
+  sections: [
+    { title: "Audit details", fields: [
+      { id:"when", type:"datetime", label:"Date and time", required:true },
+      { id:"location", type:"location", label:"Location" },
+      { id:"job", type:"text", label:"PCA / landowner name, or jobsite / job name", placeholder:"Farm name, landowner or location", required:true },
+      { id:"audited", type:"people", label:"Team / staff being audited", other:true, required:true },
+      { id:"auditedOther", type:"text", label:"Other staff being audited (names)", showIf:v => (v.audited||[]).includes("Other") },
+      { id:"auditor", type:"select", label:"Person doing the audit / filling out the form", required:true,
+        options:["Gareth Coyle","Wade McSoriley","Tad Schultz","Jonathan Poll","Toby Haliday","Other"] },
+      { id:"auditorOther", type:"text", label:"Name of person doing the audit", showIf:v => v.auditor === "Other" },
+      { id:"workTypes", type:"multi", label:"Type of work being audited",
+        options:["Bait stations / bait bags","Night shooting","Planting","Spraying","Trapping - box traps, leg holds etc","Weed control","Other"] },
+      { id:"workOther", type:"text", label:"Other type of work", showIf:v => (v.workTypes||[]).includes("Other") },
+    ]},
+    { title: "Review", fields: [
+      { id:"review", type:"textarea", label:"Review of the work that's been done (go into detail)", required:true },
+      { id:"doneWell", type:"textarea", label:"Notes on what was done well" },
+      { id:"doneBetter", type:"textarea", label:"Notes on what could be done better" },
+      { id:"followUp", type:"choice", options:YN, label:"Is a follow up with staff required?" },
+      { id:"followUpWhen", type:"date", label:"When will the follow up be completed?", showIf:v => v.followUp === "Yes" },
+      { id:"summary", type:"textarea", label:"Final summary, any further comments. Do we need to rework or contact the landowner?" },
+    ]},
+    { title: "Sign off", fields: [
+      { id:"signatures", type:"signatures", label:"Signature", required:true },
+    ]},
+  ],
+};
 window.NZCS_ONEOFF = FORMS;
 
 /* ---------------- State (memory only) ---------------- */
