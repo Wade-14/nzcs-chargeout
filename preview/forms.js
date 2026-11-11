@@ -752,7 +752,7 @@ FORMS.training = {
       { id:"topics", type:"textarea", label:"Training outline / topics covered", required:true },
       { id:"meetsReq", type:"choice", options:YN, label:"Does the trainee / do the trainees meet the basic level of requirements?" },
       { id:"improvements", type:"textarea", label:"Comments / improvements to be actioned. State who, why and what needs to be done" },
-      { id:"howOften", type:"choice", label:"If so, how often?", options:["Annually","Monthly","As needed"] },
+      { id:"howOften", type:"choice", label:"How often should this training be repeated?", options:["Annually","Monthly","As needed"] },
       { id:"length", type:"choice", label:"Length of course", options:["30 mins","1 hour","Half day","Full day"] },
     ]},
     { title: "Trainer", fields: [
