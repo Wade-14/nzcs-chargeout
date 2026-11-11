@@ -94,6 +94,9 @@ async function jobSummaries(env, status) {
   return results.map(r => ({ ...r, totals: totals[r.id] || { work: 0, travel: 0, km: 0 } }));
 }
 
+// A tracked day's timer is removed in the same batch that saves the day.
+const timerCleanup = (env, body) => body && body.timer_id ? [env.DB.prepare("DELETE FROM timers WHERE id = ?1").bind(str(body.timer_id, 40))] : [];
+
 async function getJob(env, id) {
   const job = await env.DB.prepare("SELECT * FROM jobs WHERE id = ?1").bind(id).first();
   if (!job) return null;
@@ -227,6 +230,38 @@ async function handle(req, env, ctx) {
     await env.DB.prepare("DELETE FROM push_subs WHERE endpoint = ?1").bind(str(body.endpoint, 1000)).run();
     return json(req, env, { subscribed: false });
   }
+  /* ---------- Time tracking (Environmental Enhancement Charge Out) ---------- */
+  // Running and stopped timers that haven't been saved into a day yet. Any crew phone can see and stop them.
+  if (path === "/api/timers" && req.method === "GET") {
+    const { results } = await env.DB.prepare("SELECT * FROM timers ORDER BY started_at DESC LIMIT 100").all();
+    return json(req, env, { timers: results });
+  }
+  if (path === "/api/timers" && req.method === "POST") {
+    const body = await readBody(req);
+    const kind = JOB_KINDS.includes(body.kind) ? body.kind : "enviro";
+    let jobId = null, jobName = str(body.job_name, 200).trim();
+    if (body.job_id) {
+      const job = await env.DB.prepare("SELECT id, job_name, status FROM jobs WHERE id = ?1").bind(str(body.job_id, 40)).first();
+      if (!job) return fail(req, env, 404, "That job no longer exists. It may have been deleted.");
+      if (job.status !== "open") return fail(req, env, 409, "That job has already been finished and sent for charging.");
+      jobId = job.id; jobName = job.job_name;
+    }
+    if (!jobName) return fail(req, env, 400, "Type the job name first.");
+    const t = now(), id = uid();
+    await env.DB.prepare("INSERT INTO timers (id, kind, job_id, job_name, started_at, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)").bind(id, kind, jobId, jobName, t).run();
+    return json(req, env, { timer: await env.DB.prepare("SELECT * FROM timers WHERE id = ?1").bind(id).first() }, 201);
+  }
+  if ((m = path.match(/^\/api\/timers\/([\w-]{36})(\/stop)?$/))) {
+    const id = m[1];
+    const timer = await env.DB.prepare("SELECT * FROM timers WHERE id = ?1").bind(id).first();
+    if (req.method === "DELETE") { await env.DB.prepare("DELETE FROM timers WHERE id = ?1").bind(id).run(); return json(req, env, { deleted: id }); }
+    if (!timer) return fail(req, env, 404, "This tracked day has already been saved or cancelled on another phone.");
+    if (m[2] && req.method === "POST") {
+      if (!timer.stopped_at) { timer.stopped_at = now(); await env.DB.prepare("UPDATE timers SET stopped_at = ?2 WHERE id = ?1").bind(id, timer.stopped_at).run(); }
+      return json(req, env, { timer });
+    }
+    if (!m[2] && req.method === "GET") return json(req, env, { timer });
+  }
   // List jobs: /api/jobs?status=open|complete
   if (path === "/api/jobs" && req.method === "GET") {
     const status = url.searchParams.get("status") === "complete" ? "complete" : "open";
@@ -246,6 +281,7 @@ async function handle(req, env, ctx) {
         .bind(jobId, jobName, complete ? "complete" : "open", t, complete ? t : null, kind),
       env.DB.prepare("INSERT INTO days (id, job_id, day_date, data, signature, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)")
         .bind(dayId, jobId, day.date, JSON.stringify(day.data), day.signature, t),
+      ...timerCleanup(env, body),
     ]);
     return json(req, env, { job: await getJob(env, jobId) }, 201);
   }
@@ -279,6 +315,7 @@ async function handle(req, env, ctx) {
         .bind(uid(), id, day.date, JSON.stringify(day.data), day.signature, t),
       env.DB.prepare("UPDATE jobs SET updated_at = ?2, status = ?3, completed_at = ?4 WHERE id = ?1")
         .bind(id, t, complete ? "complete" : "open", complete ? t : null),
+      ...timerCleanup(env, body),
     ]);
     return json(req, env, { job: await getJob(env, id) }, 201);
   }
@@ -319,6 +356,8 @@ export default {
   async scheduled(_event, env) {
     const cutoff = new Date(Date.now() - KEEP_COMPLETED_DAYS * 86400000).toISOString();
     await env.DB.prepare("DELETE FROM incidents WHERE status = 'complete' AND completed_at < ?1").bind(cutoff).run();
+    // Timers nobody saved into a day within a fortnight are forgotten.
+    await env.DB.prepare("DELETE FROM timers WHERE started_at < ?1").bind(new Date(Date.now() - 14 * 86400000).toISOString()).run();
     const { results } = await env.DB.prepare("SELECT id FROM jobs WHERE status = 'complete' AND completed_at < ?1").bind(cutoff).all();
     for (const r of results) {
       await env.DB.batch([

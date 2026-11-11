@@ -60,6 +60,15 @@ To add a day to an existing job, open **Jobs in progress** and tap the job. To f
 
 A Charge Out you're filling in stays on your phone even if the app is closed.
 
+**Tracking time (Environmental Enhancement only):**
+
+1. At the start of the day, type the job name (or open the job from Jobs in progress and tap Add day), then tap **Start tracking time now**. You can close the app.
+2. At the end of the day, open **Jobs in progress → Days being tracked** on any crew phone and tap the job. Tick who worked and tap **Stop tracking time**.
+3. Type any **break** in minutes and each person's **travel**. Hours worked fill in by themselves: total time (to the nearest quarter hour) minus break, minus that person's travel.
+4. Finish the form and save as usual: **No** keeps the job in progress for tomorrow, **Yes** finishes it and sends it to Sam.
+
+Start and Stop need signal.
+
 ## Incident / Accident Report
 
 Staff fill in their part and tap **Submit report**. It isn't emailed: it goes straight to the managers, who investigate and then send the finished report. Once submitted, staff can't open it again. That keeps injury and medical details private.
@@ -81,6 +90,7 @@ The app opens and forms can be filled in with no signal. **Sending, saving and s
 | **Send PDF** | Emails straight to the office and says **Sent to…** | Says the email didn't send. Keep the app open and tap Send again when you have signal |
 | Charge Out: Save (job not complete) | Saves to Jobs in progress | Your day stays on the phone. Tap Save again in signal |
 | Incident report: Submit report | Goes to the managers | Keep the app open and submit when you have signal |
+| Start / Stop tracking time | Records the time | Needs signal; try again when you have it (the clock is only recorded when it reaches the office) |
 
 **The golden rule out of reception: don't close the app** until the form is sent. Most forms are wiped when the app is fully closed. Locking the phone or switching to another app is fine.
 
