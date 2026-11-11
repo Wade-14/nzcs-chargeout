@@ -676,6 +676,26 @@ FORMS.access = {
     ]},
   ],
 };
+/* Non-PCA version: same questions, NZCS contacts and wording instead of ES. */
+FORMS.accessOther = (() => {
+  const f = Object.assign({}, FORMS.access, {
+    hash: "#access-agreement-non-pca",
+    title: "Landowner Access Agreement for Non-PCA Properties",
+    pdfTitle: "NZCS Landowner Access Agreement (Non-PCA)",
+    blurb: "Landowner permission for work on properties not in a PCA, with activities discussed and signature.",
+    titleFrom: v => `${v.pca || "Property"} ${dmy(v.date || "")}`.trim(),
+  });
+  f.sections = FORMS.access.sections.map(sec => Object.assign({}, sec, { fields: sec.fields.map(fl => {
+    if (fl.id === "pca") return Object.assign({}, fl, { label: "Property name" });
+    if (fl.id === "contractor") return Object.assign({}, fl, { value: "Toby Haliday - NZ Conservation Services Ltd, 027 319 7920" });
+    if (fl.id === "esStaff") return { id:"nzcsStaff", type:"fixed", label:"NZ Conservation Services contractor details",
+      value: "Operations Manager Gareth Coyle 027 278 2730, Wade McSoriley 027 344 3635, Tad Schultz 027 211 6188, David Walker 027 210 2179, Nigel Spencer 027 364 7091, Ruby Young 027 462 7307, Jonathan Poll 022 529 3044" };
+    if (fl.type === "notice" && fl.title === "Permission") return Object.assign({}, fl, { text: "I give permission to the NZCS staff, their contractor and sub-contractors/employees named on this form, to enter onto my land to carry out the biosecurity activities as discussed and agreed with me. In giving this approval, I acknowledge that the contractor has an obligation to manage their own and their sub-contractors/employees Health and Safety while working on my property." });
+    if (fl.type === "notice" && fl.title === "Disclosure") return Object.assign({}, fl, { text: "1. The landowner/occupier is responsible for making the contractor aware of any unusual hazards that would not normally be encountered on a farming property.\n2. The contractor acknowledges that they are responsible for damage to property due to their actions.\n3. Public Liability insurance ($2,000,000) - and hold a current policy and it includes rural forest and fire protection ($500,000).\n4. The contractor agrees to keep the landowner/occupier fully informed throughout the term of the work." });
+    return fl;
+  })}));
+  return f;
+})();
 window.NZCS_ONEOFF = FORMS;
 
 /* ---------------- State (memory only) ---------------- */
