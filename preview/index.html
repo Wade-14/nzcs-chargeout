@@ -548,13 +548,43 @@ $("#gate-form").addEventListener("submit", async e => {
 });
 
 /* ---------- form state (kept on this phone until saved) ---------- */
+// Environmental Enhancement picks materials from a list (with units); Pest Control keeps a typed box.
+const ENVIRO_MATS = [
+  {name:"CombiGuard", unit:"units"},
+  {name:"Diluted chemical", unit:"L", unitLabel:"litres"},
+  {name:"Cut and paste gel", unit:"g", unitLabel:"grams"},
+  {name:"Plants – NZCS supply", unit:"units"},
+  {name:"Plants – other nursery supply", unit:"units", nursery:true},
+  {name:"Fertiliser"},
+];
+const pickMats = () => typeof CO !== "undefined" && CO_KINDS[CO].matList;
+const blankMat = () => pickMats() ? {sel:"", other:"", qty:"", nursery:"", plants:""} : {item:"", qty:""};
+const blankMats = () => pickMats() ? [blankMat(), blankMat(), blankMat()] : [blankMat()];
+const matInfo = sel => ENVIRO_MATS.find(x => x.name === sel) || {};
+// A picked row -> what is saved and printed ("Plants – other nursery supply (nursery: X; plants: Y)", "12 units")
+function savedMat(m){
+  if (!("sel" in m)) return m;
+  const info = matInfo(m.sel), qty = String(m.qty || "").trim();
+  const item = m.sel === "Other" ? (m.other || "").trim() : info.nursery ? `${m.sel} (nursery: ${(m.nursery || "").trim() || "not given"}; plants: ${(m.plants || "").trim() || "not given"})` : m.sel;
+  return {item, qty: qty && info.unit ? `${qty} ${info.unit}` : qty};
+}
+// ...and back again when a saved day is edited
+function pickedMat(m){
+  if (!(m.item || "").trim() && !(m.qty || "").trim()) return {sel:"", other:"", qty:"", nursery:"", plants:""};
+  const info = ENVIRO_MATS.find(x => m.item === x.name || (x.nursery && m.item.startsWith(x.name + " (")));
+  const unitRe = info && info.unit ? new RegExp("\\s*" + info.unit + "$") : null;
+  const qty = unitRe ? String(m.qty || "").replace(unitRe, "") : (m.qty || "");
+  if (!info) return {sel:"Other", other:m.item, qty, nursery:"", plants:""};
+  const nm = info.nursery ? m.item.match(/nursery: (.*?); plants: (.*)\)$/) : null;
+  return {sel:info.name, other:"", qty, nursery:nm && nm[1] !== "not given" ? nm[1] : "", plants:nm && nm[2] !== "not given" ? nm[2] : ""};
+}
 const blank = () => ({mode:"new", jobId:null, jobName:"", dayId:null, dayNo:1,
-  date:todayISO(), job:"", people:[], tasks:"", hours:{}, km:"", materials:[{item:"", qty:""}], complete:"", comments:"", signedBy:"", signature:"", timerId:null, startedAt:"", stoppedAt:"", breakMins:""});
+  date:todayISO(), job:"", people:[], tasks:"", hours:{}, km:"", materials:blankMats(), complete:"", comments:"", signedBy:"", signature:"", timerId:null, startedAt:"", stoppedAt:"", breakMins:""});
 // Two charge outs that work the same way; each keeps its own draft, finished job and jobs in progress.
 // Jobs saved before the split (no kind) count as Pest Control.
 const CO_KINDS = {
   pest:   {name:"Charge Out – Pest Control", pdf:"NZCS Charge Out - Pest Control", hash:"#charge-out-pest", key:"nzcs.chargeout.v4", fin:"nzcs.chargeout.finished"},
-  enviro: {name:"Charge Out – Environmental Enhancement", pdf:"NZCS Charge Out - Environmental Enhancement", hash:"#charge-out-enviro", key:"nzcs.chargeout.enviro.v4", fin:"nzcs.chargeout.enviro.finished", tracking:true},
+  enviro: {name:"Charge Out – Environmental Enhancement", pdf:"NZCS Charge Out - Environmental Enhancement", hash:"#charge-out-enviro", key:"nzcs.chargeout.enviro.v4", fin:"nzcs.chargeout.enviro.finished", tracking:true, matList:true},
 };
 let CO = "pest";
 const kindOf = j => (j && CO_KINDS[j.kind]) ? j.kind : "pest";
@@ -562,7 +592,7 @@ const kindForHash = h => Object.keys(CO_KINDS).find(k => CO_KINDS[k].hash === h)
 const KEY = () => CO_KINDS[CO].key, FIN = () => CO_KINDS[CO].fin;
 const loadState = () => { const st = Object.assign(blank(), store.get(KEY(), {})); if (st.mode === "new" && isEmpty(st)) st.date = todayISO(); return st; };
 let state = Object.assign(blank(), store.get(KEY(), {}));
-const isEmpty = s => !s.job && !s.people.length && !s.tasks && !Object.values(s.hours || {}).some(h => h.work || h.travel) && !s.km && !s.comments && !s.signature && !s.materials.some(m => m.item || m.qty);
+const isEmpty = s => !s.job && !s.people.length && !s.tasks && !Object.values(s.hours || {}).some(h => h.work || h.travel) && !s.km && !s.comments && !s.signature && !s.materials.some(m => m.item || m.qty || m.sel || m.other);
 if (state.mode === "new" && isEmpty(state)) state.date = todayISO();
 const save = () => store.set(KEY(), state);
 let finished = null;   // the last job finished on this phone, ready to send
@@ -699,6 +729,20 @@ function renderHourTotals(){
   if (w) w.textContent = fmt(totalOf(state,"work")); if (t) t.textContent = fmt(totalOf(state,"travel"));
 }
 function renderMaterials(){
+  if (pickMats()){
+    $("#mat-host").innerHTML = state.materials.map((m,i) => {
+      if (!("sel" in m)) m = state.materials[i] = pickedMat(m);
+      const info = matInfo(m.sel);
+      return `<div class="mat-row">
+      <div class="field"><label for="m-${i}-sel">Material</label><select id="m-${i}-sel" data-mi="${i}" data-mk="sel"><option value="">Pick a material</option>${ENVIRO_MATS.concat({name:"Other"}).map(o => `<option ${m.sel === o.name ? "selected" : ""}>${esc(o.name)}</option>`).join("")}</select></div>
+      <div class="field"><label for="m-${i}-qty">Quantity${info.unit ? ` (${esc(info.unitLabel || info.unit)})` : ""}</label><input type="text" id="m-${i}-qty" autocomplete="off" ${info.unit ? 'inputmode="decimal"' : ""} data-mi="${i}" data-mk="qty" value="${esc(m.qty)}" placeholder="${info.unit ? "0" : "Amount"}"></div>
+      <button type="button" class="icon-btn" id="m-${i}-del" data-mdel="${i}" aria-label="Remove material ${i+1}">×</button>
+      ${m.sel === "Other" ? `<div class="field" style="grid-column:1/-1"><label for="m-${i}-other">What material?</label><input type="text" id="m-${i}-other" autocomplete="off" data-mi="${i}" data-mk="other" value="${esc(m.other)}" placeholder="Material"></div>` : ""}
+      ${info.nursery ? `<div class="field" style="grid-column:1/-1"><label for="m-${i}-nursery">Which nursery?</label><input type="text" id="m-${i}-nursery" autocomplete="off" data-mi="${i}" data-mk="nursery" value="${esc(m.nursery)}" placeholder="Nursery name"><span class="err" id="m-${i}-nursery-err" hidden>Type the nursery.</span></div>
+        <div class="field" style="grid-column:1/-1"><label for="m-${i}-plants">What plants?</label><input type="text" id="m-${i}-plants" autocomplete="off" data-mi="${i}" data-mk="plants" value="${esc(m.plants)}" placeholder="Plant types"><span class="err" id="m-${i}-plants-err" hidden>Type what plants they were.</span></div>` : ""}
+    </div>`; }).join("") || `<p class="hint" style="margin:0">No materials used.</p>`;
+    return;
+  }
   $("#mat-host").innerHTML = state.materials.map((m,i) => `<div class="mat-row">
     <div class="field"><label for="m-${i}-item">Material</label><input type="text" id="m-${i}-item" autocomplete="off" data-mi="${i}" data-mk="item" value="${esc(m.item)}" placeholder="Material"></div>
     <div class="field"><label for="m-${i}-qty">Quantity</label><input type="text" id="m-${i}-qty" autocomplete="off" data-mi="${i}" data-mk="qty" value="${esc(m.qty)}" placeholder="Amount"></div>
@@ -768,6 +812,7 @@ form.addEventListener("input", e => {
 form.addEventListener("change", e => {
   const el = e.target;
   if ((el.id === "f-track-start" || el.id === "f-track-end") && el.value) return changeTrackTime(el);
+  if (el.dataset.mk === "sel"){ state.materials[+el.dataset.mi].sel = el.value; save(); renderMaterials(); const q = $(`#m-${el.dataset.mi}-${el.value === "Other" ? "other" : "qty"}`); if (q && el.value) q.focus(); return; }
   if (el.id === "f-signedby"){ state.signedBy = el.value; $("#err-signedby").hidden = true; save(); return; }
   if (el.dataset.person){
     const nm = el.dataset.person;
@@ -805,8 +850,8 @@ form.addEventListener("click", e => {
 });
 document.addEventListener("click", e => { const dd = $("#dd-people"); if (dd.open && !dd.contains(e.target)) dd.open = false; });
 $("#btn-addmat").addEventListener("click", () => {
-  state.materials.push({item:"", qty:""}); save(); renderMaterials();
-  const el = $(`#m-${state.materials.length - 1}-item`); if (el) el.focus();
+  state.materials.push(blankMat()); save(); renderMaterials();
+  const el = $(`#m-${state.materials.length - 1}-${pickMats() ? "sel" : "item"}`); if (el) el.focus();
 });
 $("#btn-cancel-mode").addEventListener("click", () => resetForm());
 
@@ -860,6 +905,7 @@ function validate(){
   if (!jobName()){ $("#f-job").classList.add("invalid"); bad("#f-job", "#err-job"); }
   if (!state.people.length) bad("#dd-people", "#err-people");
   if (state.mode !== "editDay" && !state.complete) bad("#complete-field", "#err-complete");
+  if (pickMats()) state.materials.forEach((m, i) => { if (matInfo(m.sel).nursery){ if (!(m.nursery || "").trim()) bad(`#m-${i}-nursery`, `#m-${i}-nursery-err`); if (!(m.plants || "").trim()) bad(`#m-${i}-plants`, `#m-${i}-plants-err`); } });
   if (!state.signedBy) bad("#f-signedby", "#err-signedby");
   if (!state.signature) bad("#sig-wrap", "#err-sig");
   if (missing.length) $(missing[0]).scrollIntoView({block:"center"});
@@ -867,7 +913,7 @@ function validate(){
 }
 function dayPayload(){
   return {date:state.date, people:state.people.slice(), hours:Object.fromEntries(state.people.map(p => [p, state.hours[p] || {work:"",travel:""}])),
-    km:state.km, materials:matList(state.materials), tasks:state.tasks, comments:state.comments, signedBy:state.signedBy, signature:state.signature};
+    km:state.km, materials:matList(state.materials.map(savedMat)), tasks:state.tasks, comments:state.comments, signedBy:state.signedBy, signature:state.signature};
 }
 async function saveDay(){
   const st = $("#save-status"), btn = $("#btn-save");
@@ -1007,7 +1053,7 @@ $("#jobs-host").addEventListener("click", async e => {
     const i = openJob.days.findIndex(d => d.id === editId), d = openJob.days[i]; if (!d) return;
     finished = null;
     state = Object.assign(blank(), {mode:"editDay", jobId:openJob.id, jobName:openJob.job_name, dayId:d.id, dayNo:i + 1,
-      date:d.date, people:d.people.slice(), hours:JSON.parse(JSON.stringify(d.hours)), km:d.km, materials:d.materials.length ? d.materials.map(m => ({...m})) : [{item:"",qty:""}],
+      date:d.date, people:d.people.slice(), hours:JSON.parse(JSON.stringify(d.hours)), km:d.km, materials:d.materials.length ? d.materials.map(m => pickMats() ? pickedMat(m) : {...m}) : blankMats(),
       tasks:d.tasks, comments:d.comments, signedBy:d.signedBy || "", signature:d.signature});
     save(); renderAll(); if (isPanel()) closePanel(); window.scrollTo(0,0); return;
   }

@@ -51,7 +51,7 @@ function cleanDay(d) {
     hours[p] = { work: str(h.work, 10), travel: str(h.travel, 10) };
   }
   const materials = Array.isArray(d.materials)
-    ? d.materials.map(m => ({ item: str(m && m.item, 120), qty: str(m && m.qty, 60) })).filter(m => m.item).slice(0, 50) : [];
+    ? d.materials.map(m => ({ item: str(m && m.item, 250), qty: str(m && m.qty, 60) })).filter(m => m.item).slice(0, 50) : [];
   const signature = str(d.signature, MAX_SIG + 1);
   if (!str(d.signedBy, 80).trim()) throw new Error("Pick who filled in this day.");
   if (!signature.startsWith("data:image/png;base64,")) throw new Error("The day needs a signature.");
