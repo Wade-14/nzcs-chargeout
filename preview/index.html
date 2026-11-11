@@ -606,7 +606,7 @@ const blank = () => ({mode:"new", jobId:null, jobName:"", dayId:null, dayNo:1,
 // Two charge outs that work the same way; each keeps its own draft, finished job and jobs in progress.
 // Jobs saved before the split (no kind) count as Pest Control.
 const CO_KINDS = {
-  pest:   {name:"Charge Out – Pest Control", pdf:"NZCS Charge Out - Pest Control", hash:"#charge-out-pest", key:"nzcs.chargeout.v4", fin:"nzcs.chargeout.finished", tracking:true, mats:PEST_MATS},
+  pest:   {name:"Charge Out – Pest Control", pdf:"NZCS Charge Out - Pest Control", hash:"#charge-out-pest", key:"nzcs.chargeout.v4", fin:"nzcs.chargeout.finished", tracking:true, trackQuiet:true, mats:PEST_MATS},
   enviro: {name:"Charge Out – Environmental Enhancement", pdf:"NZCS Charge Out - Environmental Enhancement", hash:"#charge-out-enviro", key:"nzcs.chargeout.enviro.v4", fin:"nzcs.chargeout.enviro.finished", tracking:true, mats:ENVIRO_MATS},
 };
 let CO = "pest";
@@ -656,6 +656,11 @@ function renderTrack(){
   const host = $("#track-host");
   if (!tracks()){ host.innerHTML = ""; return; }
   let html;
+  if (!state.timerId && CO_KINDS[CO].trackQuiet){
+    // Pest Control: typing hours is the usual way; tracking is a small optional extra.
+    host.innerHTML = `<div class="field"><span class="hint">Type hours worked and travelled in Hours &amp; travel below. Or, if you'd rather, <button type="button" class="btn-small btn-ghost" id="btn-track-start">track time instead</button></span><div class="status" id="track-status" role="status"></div>${trackMsg ? `<span class="status bad">${esc(trackMsg)}</span>` : ""}</div>`;
+    return;
+  }
   if (!state.timerId){
     html = `<div class="row"><button type="button" class="btn-primary" id="btn-track-start">Start tracking time now</button></div>
       <span class="hint">${state.mode === "addDay" ? "Starts the clock for this day." : "Type the job name, then start."} You can close the app. At the end of the day, open it from Jobs in progress and tap Stop.</span>`;
