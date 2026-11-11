@@ -69,7 +69,7 @@ A Charge Out you're filling in stays on your phone even if the app is closed.
 
 Start and Stop need signal.
 
-**Materials (Environmental Enhancement):** pick each material from the list (CombiGuard, diluted chemical, cut and paste gel, plants, fertiliser, or Other) and type the quantity; the unit is shown. For plants from another nursery, also type which nursery and what plants.
+**Materials (Environmental Enhancement):** pick each material from the list (CombiGuard, diluted chemical – glyphosate or other, cut and paste gel, plants, fertiliser, or Other) and type the quantity; the unit is shown. For another diluted chemical, type what the chemical was. For plants from another nursery, type which nursery and what plants.
 
 **Tapped Start or Stop at the wrong time?** Change the **Started** / **Finished** time boxes in the tracking box and hours worked update. **Forgot to start tracking?** Just type hours worked and travel by hand, as before.
 
