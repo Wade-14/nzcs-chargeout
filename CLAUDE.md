@@ -17,7 +17,7 @@ Field-staff forms app for NZ Conservation Services Ltd (Southland, NZ). Staff fi
 
 - `index.html`: the app shell. Share-code screen, NZCS Forms home screen (tiles), the **Charge Out** form (multi-day, uses the storage API), install-on-home-screen banner. `STAFF` and `SEND_TO` (Charge Out recipient) are near the top of the main script.
 - `forms.js`: engine for **one-off forms** plus their definitions (`FORMS`). Each form is a list of sections and fields; the engine renders, validates, builds the PDF and shares it. New forms are added here.
-- `sw.js`: service worker (network-first, offline fallback). **Bump `CACHE` on every release**, in both `sw.js` and `preview/sw.js`.
+- `sw.js`: service worker (network-first with `cache: "no-cache"`, so phones don't reuse GitHub Pages' 10-minute cached copy; offline fallback). **Bump `CACHE` on every release**, in both `sw.js` and `preview/sw.js`.
 - `vendor/`: jsPDF 2.5.1 and jsPDF-AutoTable 3.8.2 (local copies; the app has no external script dependencies).
 - `vendor/logo.js`: the NZCS logo (from their own PDFs, 225 × 233 px) as a data URL, printed top-left on page 1 of every PDF.
 - `icon-*.png`: app icons made from the round emblem on white; `-maskable` versions keep the emblem inside the safe zone for Android shapes. A sharper original logo (512 px or larger) would give a crisper icon.

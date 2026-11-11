@@ -1,5 +1,5 @@
 // Keeps the app working with no signal: serves saved copies, refreshes them when online.
-const CACHE = "nzcs-chargeout-preview-v54";
+const CACHE = "nzcs-chargeout-preview-v55";
 const FILES = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "vendor/jspdf.umd.min.js", "vendor/jspdf.plugin.autotable.min.js", "forms.js", "vendor/logo.js", "icon-192-maskable.png", "icon-512-maskable.png"];
 self.addEventListener("install", e => {
   // Cache each file on its own so one missing file can't stop the rest.
@@ -10,7 +10,8 @@ self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Pr
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET" || new URL(e.request.url).origin !== location.origin) return;
   // Network first so updates show straight away; fall back to the saved copy when offline.
-  e.respondWith(fetch(e.request).then(res => {
+  // "no-cache" makes the browser check GitHub for a newer copy instead of reusing one for up to 10 minutes.
+  e.respondWith(fetch(e.request.url, {cache: "no-cache", credentials: "same-origin"}).then(res => {
     if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); }
     return res;
   }).catch(() => caches.match(e.request).then(hit => hit || caches.match("index.html"))));
