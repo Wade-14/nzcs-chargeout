@@ -114,8 +114,8 @@ If you can't wait for signal, tap **Share PDF instead** after a failed send. Pic
 
 - **Keep the share code to NZCS staff.** Don't post it or send it outside the company.
 - **Check you see "Sent to…"** before you clear a form or close the app.
-- **One Charge Out per job.** Add days to the job in Jobs in progress; don't start a new one each day.
-- **Fill in forms on the day**, while the details are fresh.
+- **One Charge Out per job.** If the job won't be finished today, save it with Job complete: No so it goes to Jobs in progress, then add the next day to it there. Don't start a new Charge Out each day.
+- **Fill in forms on the day.** Forms must be filled in daily, while the details are fresh.
 
 ## If something goes wrong
 

@@ -116,6 +116,11 @@ table.hrs tfoot td{font-weight:700;padding-top:10px;border-top:1px solid var(--l
 .status{font-size:14px;color:var(--forest);font-weight:600;min-height:1.2em}
 .status.bad{color:var(--danger)}
 .done-box{background:var(--forest-soft);border-radius:var(--r);padding:14px;display:grid;gap:10px}
+.track-box{background:var(--forest-soft);border-radius:var(--r);padding:12px 14px;display:grid;gap:8px;margin-bottom:14px}
+.track-box b.big{font-size:18px}
+.track-box .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.track-box input{max-width:110px;min-height:44px}
+.job-card.tracking .tag{background:var(--amber-soft);color:var(--amber)}
 .done-box b{font-size:16px}
 .done-box .btns{display:flex;flex-wrap:wrap;gap:8px}
 .confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px}
@@ -379,6 +384,7 @@ body.drawer-open .drawer-shade{opacity:1;pointer-events:auto}
           <input type="text" id="f-job" data-k="job" autocomplete="off" placeholder="Farm name, landowner or location">
           <span class="err" id="err-job" hidden>Type the job name.</span>
         </div>
+        <div id="track-host"></div>
         <div class="field">
           <span class="label" id="lbl-people">People on site</span>
           <details class="dd" id="dd-people">
@@ -542,13 +548,66 @@ $("#gate-form").addEventListener("submit", async e => {
 });
 
 /* ---------- form state (kept on this phone until saved) ---------- */
+// Environmental Enhancement picks materials from a list (with units); Pest Control keeps a typed box.
+const ENVIRO_MATS = [
+  {name:"CombiGuard", unit:"units"},
+  {name:"Diluted chemical – glyphosate", unit:"L", unitLabel:"litres"},
+  {name:"Diluted chemical – other", unit:"L", unitLabel:"litres", ask:[{key:"chem", tag:"chemical", label:"What chemical?", err:"Type what the chemical was.", ph:"Chemical name"}]},
+  {name:"Cut and paste gel", unit:"g", unitLabel:"grams"},
+  {name:"Plants – NZCS supply", unit:"units"},
+  {name:"Plants – other nursery supply", unit:"units", ask:[{key:"nursery", tag:"nursery", label:"Which nursery?", err:"Type the nursery.", ph:"Nursery name"}, {key:"plants", tag:"plants", label:"What plants?", err:"Type what plants they were.", ph:"Plant types"}]},
+  {name:"Fertiliser"},
+];
+// Pest Control list and units (Wade, 11-11-2026).
+const PEST_MATS = [
+  {name:"Feratox pills", unit:"units"},
+  {name:"Feratox bio bags", unit:"units"},
+  {name:"High strength brodifacoum (HSB)", unit:"kg"},
+  {name:"Sentry", unit:"units"},
+  {name:"Sentry Plus", unit:"units"},
+  {name:"Pre-feed", unit:"kg"},
+];
+const MATS = () => (typeof CO !== "undefined" && CO_KINDS[CO].mats) || [];
+const pickMats = () => MATS().length > 0;
+const blankPick = () => ({sel:"", other:"", qty:"", chem:"", nursery:"", plants:""});
+const blankMat = () => pickMats() ? blankPick() : {item:"", qty:""};
+const blankMats = () => [blankMat(), blankMat(), blankMat()];   // 3 material boxes to start on both Charge Outs
+const matInfo = sel => MATS().find(x => x.name === sel) || {};
+// A picked row -> what is saved and printed ("Diluted chemical – other (chemical: X)", "15 L")
+function savedMat(m){
+  if (!("sel" in m)) return m;
+  const info = matInfo(m.sel), qty = String(m.qty || "").trim();
+  const item = m.sel === "Other" ? (m.other || "").trim()
+    : info.ask ? `${m.sel} (${info.ask.map(a => `${a.tag}: ${(m[a.key] || "").trim() || "not given"}`).join("; ")})` : m.sel;
+  return {item, qty: qty && info.unit ? `${qty} ${info.unit}` : qty};
+}
+// ...and back again when a saved day is edited
+function pickedMat(m){
+  if (!(m.item || "").trim() && !(m.qty || "").trim()) return blankPick();
+  const info = MATS().find(x => m.item === x.name || (x.ask && m.item.startsWith(x.name + " (")));
+  const unitRe = info && info.unit ? new RegExp("\\s*" + info.unit + "$") : null;
+  const row = Object.assign(blankPick(), {qty: unitRe ? String(m.qty || "").replace(unitRe, "") : (m.qty || "")});
+  if (!info) return Object.assign(row, {sel:"Other", other:m.item});
+  row.sel = info.name;
+  if (info.ask){
+    const inner = m.item.slice(info.name.length + 2, -1);
+    info.ask.forEach((a, k) => {
+      const next = info.ask[k + 1], start = inner.indexOf(a.tag + ": ");
+      if (start < 0) return;
+      const from = start + a.tag.length + 2, to = next ? inner.indexOf("; " + next.tag + ": ", from) : inner.length;
+      const v = inner.slice(from, to < 0 ? inner.length : to);
+      row[a.key] = v === "not given" ? "" : v;
+    });
+  }
+  return row;
+}
 const blank = () => ({mode:"new", jobId:null, jobName:"", dayId:null, dayNo:1,
-  date:todayISO(), job:"", people:[], tasks:"", hours:{}, km:"", materials:[{item:"", qty:""}], complete:"", comments:"", signedBy:"", signature:""});
+  date:todayISO(), job:"", people:[], tasks:"", hours:{}, km:"", materials:blankMats(), complete:"", comments:"", signedBy:"", signature:"", timerId:null, startedAt:"", stoppedAt:"", breakMins:""});
 // Two charge outs that work the same way; each keeps its own draft, finished job and jobs in progress.
 // Jobs saved before the split (no kind) count as Pest Control.
 const CO_KINDS = {
-  pest:   {name:"Charge Out – Pest Control", pdf:"NZCS Charge Out - Pest Control", hash:"#charge-out-pest", key:"nzcs.chargeout.v4", fin:"nzcs.chargeout.finished"},
-  enviro: {name:"Charge Out – Environmental Enhancement", pdf:"NZCS Charge Out - Environmental Enhancement", hash:"#charge-out-enviro", key:"nzcs.chargeout.enviro.v4", fin:"nzcs.chargeout.enviro.finished"},
+  pest:   {name:"Charge Out – Pest Control", pdf:"NZCS Charge Out - Pest Control", hash:"#charge-out-pest", key:"nzcs.chargeout.v4", fin:"nzcs.chargeout.finished", tracking:true, trackQuiet:true, mats:PEST_MATS},
+  enviro: {name:"Charge Out – Environmental Enhancement", pdf:"NZCS Charge Out - Environmental Enhancement", hash:"#charge-out-enviro", key:"nzcs.chargeout.enviro.v4", fin:"nzcs.chargeout.enviro.finished", tracking:true, mats:ENVIRO_MATS},
 };
 let CO = "pest";
 const kindOf = j => (j && CO_KINDS[j.kind]) ? j.kind : "pest";
@@ -556,7 +615,7 @@ const kindForHash = h => Object.keys(CO_KINDS).find(k => CO_KINDS[k].hash === h)
 const KEY = () => CO_KINDS[CO].key, FIN = () => CO_KINDS[CO].fin;
 const loadState = () => { const st = Object.assign(blank(), store.get(KEY(), {})); if (st.mode === "new" && isEmpty(st)) st.date = todayISO(); return st; };
 let state = Object.assign(blank(), store.get(KEY(), {}));
-const isEmpty = s => !s.job && !s.people.length && !s.tasks && !Object.values(s.hours || {}).some(h => h.work || h.travel) && !s.km && !s.comments && !s.signature && !s.materials.some(m => m.item || m.qty);
+const isEmpty = s => !s.job && !s.people.length && !s.tasks && !Object.values(s.hours || {}).some(h => h.work || h.travel) && !s.km && !s.comments && !s.signature && !s.materials.some(m => m.item || m.qty || m.sel || m.other);
 if (state.mode === "new" && isEmpty(state)) state.date = todayISO();
 const save = () => store.set(KEY(), state);
 let finished = null;   // the last job finished on this phone, ready to send
@@ -571,6 +630,106 @@ const matList = mats => (mats || []).filter(m => (m.item || "").trim());
 const hoursOf = (d, p, k) => ((d.hours[p] || {})[k] ?? "");
 const totalOf = (d, k) => d.people.reduce((s,p) => s + n(hoursOf(d,p,k)), 0);
 
+/* ---------- time tracking (Environmental Enhancement only) ----------
+   Start saves a timer online; any crew phone can open it from Jobs in progress and tap Stop.
+   Hours worked = (stop - start - break), rounded to the nearest quarter hour, minus each person's travel. */
+const tracks = () => !!CO_KINDS[CO].tracking && state.mode !== "editDay";
+const clock = iso => { const d = new Date(iso), h = d.getHours(); return `${h % 12 || 12}:${String(d.getMinutes()).padStart(2, "0")} ${h < 12 ? "am" : "pm"}`; };
+const hhmm = iso => { const d = new Date(iso); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+// "07:30" on the day tracking started -> ISO time
+const atTime = (baseIso, v) => { const d = new Date(baseIso), [h, m] = v.split(":").map(Number); d.setHours(h, m, 0, 0); return d.toISOString(); };
+const hrsMins = ms => { const m = Math.max(0, Math.round(ms / 60000)); return `${Math.floor(m / 60)} hrs ${m % 60} mins`; };
+function trackedTotal(){   // hours, after break, to the nearest quarter
+  if (!state.startedAt || !state.stoppedAt) return null;
+  const h = (new Date(state.stoppedAt) - new Date(state.startedAt)) / 3600000 - (n(state.breakMins) / 60);
+  return Math.max(0, Math.round(h * 4) / 4);
+}
+function fillTrackedHours(only){
+  const tot = trackedTotal(); if (tot === null) return;
+  (only ? [only] : state.people).forEach(p => {
+    const h = state.hours[p] = state.hours[p] || {};
+    h.work = String(Math.max(0, tot - n(h.travel)));
+  });
+}
+let timersCache = [], allTimers = [], trackMsg = "";
+function renderTrack(){
+  const host = $("#track-host");
+  if (!tracks()){ host.innerHTML = ""; return; }
+  let html;
+  if (!state.timerId && CO_KINDS[CO].trackQuiet){
+    // Pest Control: typing hours is the usual way; tracking is a small optional extra.
+    host.innerHTML = `<div class="field"><span class="hint">Tick the people on site, then type their hours in Hours &amp; travel below. Or, if you'd rather, <button type="button" class="btn-small btn-ghost" id="btn-track-start">track time instead</button></span><div class="status" id="track-status" role="status"></div>${trackMsg ? `<span class="status bad">${esc(trackMsg)}</span>` : ""}</div>`;
+    return;
+  }
+  if (!state.timerId){
+    html = `<div class="row"><button type="button" class="btn-primary" id="btn-track-start">Start tracking time now</button></div>
+      <span class="hint">${state.mode === "addDay" ? "Starts the clock for this day." : "Type the job name, then start."} You can close the app. At the end of the day, open it from Jobs in progress and tap Stop.</span>`;
+  } else if (!state.stoppedAt){
+    html = `<span>Tracking since <b class="big">${esc(clock(state.startedAt))}</b> · <span id="track-elapsed">${esc(hrsMins(Date.now() - new Date(state.startedAt)))}</span> so far</span>
+      <div class="row"><label for="f-track-start" style="margin:0">Started at</label><input type="time" id="f-track-start" value="${hhmm(state.startedAt)}"><span class="hint">Change it if Start was tapped late.</span></div>
+      <div class="row"><button type="button" class="btn-hivis" id="btn-track-stop">Stop tracking time</button><span id="track-cancel-wrap"><button type="button" class="btn-small btn-ghost" id="btn-track-cancel">Cancel tracking</button></span></div>
+      <span class="hint">Fill in the rest of the form whenever you like. Hours worked fill in when you tap Stop.</span>`;
+  } else {
+    const tot = trackedTotal();
+    html = `<span>Tracked <b>${esc(clock(state.startedAt))} – ${esc(clock(state.stoppedAt))}</b> (${esc(hrsMins(new Date(state.stoppedAt) - new Date(state.startedAt)))})</span>
+      <div class="row"><label for="f-track-start" style="margin:0">Started</label><input type="time" id="f-track-start" value="${hhmm(state.startedAt)}"><label for="f-track-end" style="margin:0">Finished</label><input type="time" id="f-track-end" value="${hhmm(state.stoppedAt)}"></div>
+      <span class="hint">Tapped Start or Stop at the wrong time? Change the times and hours worked update.</span>
+      <div class="row"><label for="f-break" style="margin:0">Break (mins)</label><input type="number" id="f-break" inputmode="numeric" min="0" step="5" placeholder="0" value="${esc(state.breakMins)}"></div>
+      <span>Total time: <b class="big" id="track-total">${fmt(tot)} hrs</b></span>
+      <span class="hint">Rounded to the nearest quarter hour. Each person's hours worked = total time minus their travel. Type travel below and hours worked update.</span>`;
+  }
+  host.innerHTML = `<div class="track-box">${html}${trackMsg ? `<span class="status bad">${esc(trackMsg)}</span>` : ""}<div class="status" id="track-status" role="status"></div></div>`;
+}
+setInterval(() => { const el = $("#track-elapsed"); if (el && state.startedAt && !state.stoppedAt) el.textContent = hrsMins(Date.now() - new Date(state.startedAt)); }, 30000);
+function trackStatus(msg, bad){ const st = $("#track-status"); if (st){ st.className = "status" + (bad ? " bad" : ""); st.textContent = msg; } }
+async function startTracking(){
+  if (state.mode === "new" && !state.job.trim()){ $("#f-job").classList.add("invalid"); $("#err-job").hidden = false; $("#f-job").focus(); return; }
+  const btn = $("#btn-track-start"); btn.disabled = true; trackStatus("Starting…");
+  try{
+    const {timer} = await api("POST", "/api/timers", {kind:CO, job_name:state.mode === "new" ? state.job.trim() : state.jobName, job_id:state.mode === "addDay" ? state.jobId : null});
+    state.timerId = timer.id; state.startedAt = timer.started_at; state.stoppedAt = ""; trackMsg = ""; save(); renderTrack(); loadJobs();
+    trackStatus("Tracking started. You can close the app now.");
+  }catch(err){ btn.disabled = false; trackStatus(err.offline ? "Starting the clock needs signal. Try again when you have signal." : err.message, true); }
+}
+async function stopTracking(){
+  const btn = $("#btn-track-stop"); btn.disabled = true; trackStatus("Stopping…");
+  try{
+    const {timer} = await api("POST", `/api/timers/${state.timerId}/stop`);
+    state.startedAt = timer.started_at; state.stoppedAt = timer.stopped_at; fillTrackedHours(); save();
+    renderTrack(); renderHours(); renderBar(); trackStatus("Stopped. Hours worked are filled in; type each person's travel.");
+  }catch(err){
+    btn.disabled = false;
+    if (/already been saved or cancelled/.test(err.message)){ state.timerId = null; state.startedAt = ""; save(); trackMsg = err.message; renderTrack(); return; }
+    trackStatus(err.offline ? "Stopping the clock needs signal. Try again when you have signal; the time keeps counting." : err.message, true);
+  }
+}
+async function changeTrackTime(el){
+  const iso = atTime(state.startedAt, el.value), body = el.id === "f-track-start" ? {started_at:iso} : {stopped_at:iso};
+  const start = body.started_at || state.startedAt, stop = body.stopped_at || state.stoppedAt;
+  if (stop && new Date(stop) <= new Date(start)){ el.value = hhmm(el.id === "f-track-start" ? state.startedAt : state.stoppedAt); return trackStatus("The finish time must be after the start time.", true); }
+  if (new Date(iso) > Date.now() + 5 * 60000){ el.value = hhmm(el.id === "f-track-start" ? state.startedAt : state.stoppedAt); return trackStatus("That time is in the future.", true); }
+  const apply = () => { state.startedAt = start; state.stoppedAt = stop || ""; if (state.stoppedAt) fillTrackedHours(); save(); renderTrack(); renderHours(); renderBar(); };
+  try{ await api("PUT", `/api/timers/${state.timerId}`, body); apply(); trackStatus("Time changed."); }
+  catch(err){
+    // Once stopped, the day is finished on this phone, so a change can be kept here without signal.
+    if (err.offline && state.stoppedAt){ apply(); trackStatus("Time changed on this phone."); return; }
+    el.value = hhmm(el.id === "f-track-start" ? state.startedAt : state.stoppedAt);
+    trackStatus(err.offline ? "Changing the start time needs signal while the clock is running." : err.message, true);
+  }
+}
+// Load a tracked day from Jobs in progress onto this phone.
+async function openTimer(t){
+  finished = null; clearSig(true); trackMsg = "";
+  let extra = {mode:"new", job:t.job_name};
+  if (t.job_id){
+    const {job} = await api("GET", `/api/jobs/${t.job_id}`);
+    extra = {mode:"addDay", jobId:job.id, jobName:job.job_name, dayNo:job.days.length + 1};
+  }
+  state = Object.assign(blank(), extra, {timerId:t.id, startedAt:t.started_at, stoppedAt:t.stopped_at || ""});
+  if (state.stoppedAt) fillTrackedHours();
+  save(); renderAll(); if (isPanel()) closePanel(); window.scrollTo(0,0);
+}
+
 /* ---------- render: form ---------- */
 function renderPeople(){
   const names = Array.from(new Set(STAFF.concat(state.people)));
@@ -584,7 +743,7 @@ function renderPeople(){
 }
 function renderHours(){
   const host = $("#hours-host");
-  if (!state.people.length){ host.innerHTML = `<p class="hint" style="margin:0">Tick the people on site above and a row for each person appears here.</p>`; return; }
+  if (!state.people.length){ host.innerHTML = `<div class="track-box"><b>Who worked today?</b><span class="hint" style="margin:0">Tick the people on site and a row for each person appears here for their hours worked and travelled.</span><div class="row"><button type="button" class="btn-primary btn-small" id="btn-pick-people">Tick people on site</button></div></div>`; return; }
   host.innerHTML = `<table class="hrs"><thead><tr><th>Person</th><th>Hours worked</th><th>Hours travelled</th></tr></thead><tbody>` +
     state.people.map((p,i) => `<tr><td class="name">${esc(p)}</td>
       <td><input type="number" inputmode="decimal" min="0" step="0.25" autocomplete="off" id="h-${i}-work" data-person-h="${esc(p)}" data-kind="work" value="${esc(hoursOf(state,p,'work'))}" placeholder="0" aria-label="Hours worked by ${esc(p)}"></td>
@@ -598,6 +757,19 @@ function renderHourTotals(){
   if (w) w.textContent = fmt(totalOf(state,"work")); if (t) t.textContent = fmt(totalOf(state,"travel"));
 }
 function renderMaterials(){
+  if (pickMats()){
+    $("#mat-host").innerHTML = state.materials.map((m,i) => {
+      if (!("sel" in m)) m = state.materials[i] = pickedMat(m);
+      const info = matInfo(m.sel);
+      return `<div class="mat-row">
+      <div class="field"><label for="m-${i}-sel">Material</label><select id="m-${i}-sel" data-mi="${i}" data-mk="sel"><option value="">Pick a material</option>${MATS().concat({name:"Other"}).map(o => `<option ${m.sel === o.name ? "selected" : ""}>${esc(o.name)}</option>`).join("")}</select></div>
+      <div class="field"><label for="m-${i}-qty">Quantity${info.unit ? ` (${esc(info.unitLabel || info.unit)})` : ""}</label><input type="text" id="m-${i}-qty" autocomplete="off" ${info.unit ? 'inputmode="decimal"' : ""} data-mi="${i}" data-mk="qty" value="${esc(m.qty)}" placeholder="${info.unit ? "0" : "Amount"}"></div>
+      <button type="button" class="icon-btn" id="m-${i}-del" data-mdel="${i}" aria-label="Remove material ${i+1}">×</button>
+      ${m.sel === "Other" ? `<div class="field" style="grid-column:1/-1"><label for="m-${i}-other">What material?</label><input type="text" id="m-${i}-other" autocomplete="off" data-mi="${i}" data-mk="other" value="${esc(m.other)}" placeholder="Material"></div>` : ""}
+      ${(info.ask || []).map(a => `<div class="field" style="grid-column:1/-1"><label for="m-${i}-${a.key}">${esc(a.label)}</label><input type="text" id="m-${i}-${a.key}" autocomplete="off" data-mi="${i}" data-mk="${a.key}" value="${esc(m[a.key] || "")}" placeholder="${esc(a.ph)}"><span class="err" id="m-${i}-${a.key}-err" hidden>${esc(a.err)}</span></div>`).join("")}
+    </div>`; }).join("") || `<p class="hint" style="margin:0">No materials used.</p>`;
+    return;
+  }
   $("#mat-host").innerHTML = state.materials.map((m,i) => `<div class="mat-row">
     <div class="field"><label for="m-${i}-item">Material</label><input type="text" id="m-${i}-item" autocomplete="off" data-mi="${i}" data-mk="item" value="${esc(m.item)}" placeholder="Material"></div>
     <div class="field"><label for="m-${i}-qty">Quantity</label><input type="text" id="m-${i}-qty" autocomplete="off" data-mi="${i}" data-mk="qty" value="${esc(m.qty)}" placeholder="Amount"></div>
@@ -640,7 +812,7 @@ function renderSend(){
   else { label = "Save"; hint = "Answer “Is job complete and ready to charge?” first."; }
   host.innerHTML = `<div class="btns"><button type="button" class="${cls}" id="btn-save">${label}</button></div><span class="hint">${hint}</span><div class="status" id="save-status" role="status"></div>`;
 }
-function renderAll(){ renderScalars(); renderPeople(); renderHours(); renderMaterials(); renderBar(); renderSend(); loadSignature(); }
+function renderAll(){ renderScalars(); renderTrack(); renderPeople(); renderHours(); renderMaterials(); renderBar(); renderSend(); loadSignature(); }
 
 /* ---------- form events ---------- */
 const form = $("#form");
@@ -655,12 +827,19 @@ form.addEventListener("input", e => {
   } else if (el.dataset.mk){
     state.materials[+el.dataset.mi][el.dataset.mk] = el.value;
   } else if (el.dataset.kind){
-    const p = el.dataset.personH; state.hours[p] = state.hours[p] || {}; state.hours[p][el.dataset.kind] = el.value; renderHourTotals();
+    const p = el.dataset.personH; state.hours[p] = state.hours[p] || {}; state.hours[p][el.dataset.kind] = el.value;
+    if (el.dataset.kind === "travel" && trackedTotal() !== null && tracks()){ fillTrackedHours(p); const w = el.closest("tr").querySelector('[data-kind="work"]'); if (w) w.value = state.hours[p].work; }
+    renderHourTotals();
+  } else if (el.id === "f-break"){
+    state.breakMins = el.value; fillTrackedHours(); const t = $("#track-total"); if (t) t.textContent = fmt(trackedTotal()) + " hrs";
+    save(); renderHours(); renderBar(); return;
   }
   save(); renderBar();
 });
 form.addEventListener("change", e => {
   const el = e.target;
+  if ((el.id === "f-track-start" || el.id === "f-track-end") && el.value) return changeTrackTime(el);
+  if (el.dataset.mk === "sel"){ state.materials[+el.dataset.mi].sel = el.value; save(); renderMaterials(); const q = $(`#m-${el.dataset.mi}-${el.value === "Other" ? "other" : (matInfo(el.value).ask ? matInfo(el.value).ask[0].key : "qty")}`); if (q && el.value) q.focus(); return; }
   if (el.id === "f-signedby"){ state.signedBy = el.value; $("#err-signedby").hidden = true; save(); return; }
   if (el.dataset.person){
     const nm = el.dataset.person;
@@ -668,6 +847,7 @@ form.addEventListener("change", e => {
     const order = Array.from(new Set(STAFF.concat(state.people)));
     state.people.sort((a,b) => order.indexOf(a) - order.indexOf(b));
     $("#err-people").hidden = true;
+    if (el.checked && tracks()) fillTrackedHours(nm);
     save(); $("#dd-summary").innerHTML = state.people.length ? esc(state.people.join(", ")) : `<span class="ph">Tick who was on site</span>`;
     renderHours(); renderBar();
   }
@@ -675,6 +855,7 @@ form.addEventListener("change", e => {
 form.addEventListener("click", e => {
   const id = e.target.id;
   if (id === "dd-close"){ $("#dd-people").open = false; return; }
+  if (id === "btn-pick-people"){ const dd = $("#dd-people"); dd.scrollIntoView({block:"start", behavior:"smooth"}); setTimeout(() => { dd.open = true; }, 250); return; }
   if (id === "btn-samehours"){
     const f = state.hours[state.people[0]] || {};
     state.people.forEach(p => state.hours[p] = {work:f.work ?? "", travel:f.travel ?? ""});
@@ -685,6 +866,11 @@ form.addEventListener("click", e => {
   const del = e.target.closest("[data-mdel]");
   if (del){ state.materials.splice(+del.dataset.mdel, 1); save(); renderMaterials(); return; }
   if (id === "btn-save") return saveDay();
+  if (id === "btn-track-start") return startTracking();
+  if (id === "btn-track-stop") return stopTracking();
+  if (id === "btn-track-cancel"){ $("#track-cancel-wrap").innerHTML = `<span class="confirm">Cancel tracking for this day? <button type="button" class="btn-small btn-danger" id="btn-track-cancel-yes">Cancel tracking</button><button type="button" class="btn-small" id="btn-track-keep">Keep</button></span>`; return; }
+  if (id === "btn-track-keep") return renderTrack();
+  if (id === "btn-track-cancel-yes"){ const tid = state.timerId; state.timerId = null; state.startedAt = ""; state.stoppedAt = ""; save(); renderTrack(); api("DELETE", `/api/timers/${tid}`).then(loadJobs).catch(() => {}); return; }
   if (id === "btn-share") return sharePdf();
   if (id === "btn-pdf") return downloadPdf();
   if (id === "btn-copy") return copyEmail();
@@ -692,8 +878,8 @@ form.addEventListener("click", e => {
 });
 document.addEventListener("click", e => { const dd = $("#dd-people"); if (dd.open && !dd.contains(e.target)) dd.open = false; });
 $("#btn-addmat").addEventListener("click", () => {
-  state.materials.push({item:"", qty:""}); save(); renderMaterials();
-  const el = $(`#m-${state.materials.length - 1}-item`); if (el) el.focus();
+  state.materials.push(blankMat()); save(); renderMaterials();
+  const el = $(`#m-${state.materials.length - 1}-${pickMats() ? "sel" : "item"}`); if (el) el.focus();
 });
 $("#btn-cancel-mode").addEventListener("click", () => resetForm());
 
@@ -747,6 +933,7 @@ function validate(){
   if (!jobName()){ $("#f-job").classList.add("invalid"); bad("#f-job", "#err-job"); }
   if (!state.people.length) bad("#dd-people", "#err-people");
   if (state.mode !== "editDay" && !state.complete) bad("#complete-field", "#err-complete");
+  if (pickMats()) state.materials.forEach((m, i) => (matInfo(m.sel).ask || []).forEach(q => { if (!(m[q.key] || "").trim()) bad(`#m-${i}-${q.key}`, `#m-${i}-${q.key}-err`); }));
   if (!state.signedBy) bad("#f-signedby", "#err-signedby");
   if (!state.signature) bad("#sig-wrap", "#err-sig");
   if (missing.length) $(missing[0]).scrollIntoView({block:"center"});
@@ -754,18 +941,19 @@ function validate(){
 }
 function dayPayload(){
   return {date:state.date, people:state.people.slice(), hours:Object.fromEntries(state.people.map(p => [p, state.hours[p] || {work:"",travel:""}])),
-    km:state.km, materials:matList(state.materials), tasks:state.tasks, comments:state.comments, signedBy:state.signedBy, signature:state.signature};
+    km:state.km, materials:matList(state.materials.map(savedMat)), tasks:state.tasks, comments:state.comments, signedBy:state.signedBy, signature:state.signature};
 }
 async function saveDay(){
   const st = $("#save-status"), btn = $("#btn-save");
   st.className = "status"; st.textContent = "";
+  if (tracks() && state.timerId && !state.stoppedAt){ st.className = "status bad"; st.textContent = "Tap Stop tracking time first (at the top of the form)."; return; }
   if (!validate()){ st.className = "status bad"; st.textContent = "Some details are missing. Check the fields marked in red."; return; }
   const complete = state.mode !== "editDay" && state.complete === "Yes";
   btn.disabled = true; st.textContent = "Saving…";
   try{
     let res;
-    if (state.mode === "new") res = await api("POST", "/api/jobs", {job_name:state.job.trim(), kind:CO, day:dayPayload(), complete});
-    else if (state.mode === "addDay") res = await api("POST", `/api/jobs/${state.jobId}/days`, {day:dayPayload(), complete});
+    if (state.mode === "new") res = await api("POST", "/api/jobs", {job_name:state.job.trim(), kind:CO, day:dayPayload(), complete, timer_id:state.timerId});
+    else if (state.mode === "addDay") res = await api("POST", `/api/jobs/${state.jobId}/days`, {day:dayPayload(), complete, timer_id:state.timerId});
     else res = await api("PUT", `/api/jobs/${state.jobId}/days/${state.dayId}`, {day:dayPayload(), complete:false});
     const job = res.job;
     openJob = null; jobsView = "list"; loadJobs();
@@ -788,10 +976,18 @@ let jobsCache = [], allJobs = [], openJob = null, jobsView = "list";
 async function loadJobs(){
   if (!auth) return;
   try{
-    const res = await api("GET", "/api/jobs?status=open");
+    const [res, tm] = await Promise.all([api("GET", "/api/jobs?status=open"), api("GET", "/api/timers").catch(() => null)]);
+    if (tm){
+      allTimers = tm.timers; timersCache = allTimers.filter(t => t.kind === CO);
+      // A tracked day saved or cancelled on another phone: drop it from this phone's form.
+      if (state.timerId && !tm.timers.some(t => t.id === state.timerId)){ state.timerId = null; state.startedAt = ""; state.stoppedAt = ""; trackMsg = "This tracked day was saved or cancelled on another phone."; save(); renderTrack(); }
+    }
     allJobs = res.jobs; jobsCache = allJobs.filter(j => kindOf(j) === CO); if (res.role && auth && auth.role !== res.role){ auth.role = res.role; store.set(AUTH_KEY, auth); $("#role-pill").hidden = auth.role !== "manager"; }
-    $("#jobs-count").textContent = jobsCache.length;
-    Object.keys(CO_KINDS).forEach(k => { const n = allJobs.filter(j => kindOf(j) === k).length, tj = $("#tile-jobs-" + k); tj.hidden = !n; tj.textContent = plural(n, "job") + " in progress"; });
+    $("#jobs-count").textContent = jobsCache.length + timersCache.length;
+    Object.keys(CO_KINDS).forEach(k => {
+      const n = allJobs.filter(j => kindOf(j) === k).length, nt = allTimers.filter(t => t.kind === k).length, tj = $("#tile-jobs-" + k);
+      tj.hidden = !n && !nt; tj.textContent = [n ? plural(n, "job") + " in progress" : "", nt ? nt + " being tracked" : ""].filter(Boolean).join(" · ");
+    });
     if (typeof updateFolderBadges === "function") updateFolderBadges();
     if (jobsView === "list") renderJobsList();
   }catch(err){ if (jobsView === "list") renderJobsList(err.message); }
@@ -804,6 +1000,11 @@ function renderJobsList(error){
   const host = $("#jobs-host");
   host.innerHTML = jobsHead("Jobs in progress") +
     (error ? `<p class="status bad">${esc(error)}</p>` : "") +
+    (timersCache.length ? `<h3 style="margin:4px 0 8px">Days being tracked</h3><div class="jobs-list" style="margin-bottom:14px">` + timersCache.map(t => `<button type="button" class="job-card tracking" data-timer="${t.id}">
+        <span class="tag">${t.stopped_at ? `Stopped · ${esc(clock(t.started_at))} – ${esc(clock(t.stopped_at))}` : `Tracking since ${esc(clock(t.started_at))}`}${new Date(t.started_at).toDateString() !== new Date().toDateString() ? " " + esc(dmy(t.started_at.slice(0,10))) : ""}</span>
+        <span class="jn">${esc(t.job_name)}</span>
+        <span class="meta">${t.id === state.timerId ? "Open on this phone" : "Tap to open on this phone and finish the day"}</span>
+      </button>`).join("") + `</div>` : "") +
     (jobsCache.length ? `<div class="jobs-list">` + jobsCache.map(j => `<button type="button" class="job-card" data-job="${j.id}">
         <span class="tag">${plural(j.day_count, "day")} logged</span>
         <span class="jn">${esc(j.job_name)}</span>
@@ -846,10 +1047,22 @@ const isPanel = () => window.matchMedia("(max-width:1039px)").matches;
 const formIsFree = () => state.mode === "new" && isEmpty(state);
 $("#btn-jobs").addEventListener("click", openPanel);
 $("#jobs-host").addEventListener("click", async e => {
-  const t = e.target, id = t.id;
+  const t = e.target, id = t.id, go0 = t.dataset.go;
   if (id === "jobs-close") return closePanel();
   if (id === "jobs-back"){ openJob = null; renderJobsList(); return loadJobs(); }
   const card = t.closest("[data-job]"); if (card) return showJob(card.dataset.job);
+  const tc = t.closest("[data-timer]");
+  if (tc || (go0 && go0.startsWith("timer:"))){
+    const tid = tc ? tc.dataset.timer : go0.slice(6), tm = timersCache.find(x => x.id === tid); if (!tm) return loadJobs();
+    if (tid === state.timerId){ if (isPanel()) closePanel(); window.scrollTo(0,0); return; }
+    if (tc && !formIsFree()){
+      const warn = document.createElement("div"); warn.className = "confirm";
+      warn.innerHTML = `This replaces the form you've started. <button type="button" class="btn-small btn-primary" data-go="timer:${tid}">Continue</button>`;
+      tc.after(warn); return;
+    }
+    try{ await openTimer(tm); }catch(err){ renderJobsList(err.message); }
+    return;
+  }
   // Starting a day or an edit replaces whatever is in the form, so check first.
   if ((id === "job-addday" || t.dataset.edit) && !formIsFree()){
     const w = t.dataset.edit ? t.closest(".day-head") : t;
@@ -868,7 +1081,7 @@ $("#jobs-host").addEventListener("click", async e => {
     const i = openJob.days.findIndex(d => d.id === editId), d = openJob.days[i]; if (!d) return;
     finished = null;
     state = Object.assign(blank(), {mode:"editDay", jobId:openJob.id, jobName:openJob.job_name, dayId:d.id, dayNo:i + 1,
-      date:d.date, people:d.people.slice(), hours:JSON.parse(JSON.stringify(d.hours)), km:d.km, materials:d.materials.length ? d.materials.map(m => ({...m})) : [{item:"",qty:""}],
+      date:d.date, people:d.people.slice(), hours:JSON.parse(JSON.stringify(d.hours)), km:d.km, materials:d.materials.length ? d.materials.map(m => pickMats() ? pickedMat(m) : {...m}) : blankMats(),
       tasks:d.tasks, comments:d.comments, signedBy:d.signedBy || "", signature:d.signature});
     save(); renderAll(); if (isPanel()) closePanel(); window.scrollTo(0,0); return;
   }
@@ -1157,8 +1370,8 @@ function setKind(k){
   if (k === CO) return;
   save(); CO = k; state = loadState(); finished = loadFinished();
   openJob = null; jobsView = "list"; closePanel();
-  jobsCache = allJobs.filter(j => kindOf(j) === CO); $("#jobs-count").textContent = jobsCache.length;
-  clearSig(true); renderAll(); renderJobsList();
+  jobsCache = allJobs.filter(j => kindOf(j) === CO); timersCache = allTimers.filter(t => t.kind === CO); $("#jobs-count").textContent = jobsCache.length + timersCache.length;
+  trackMsg = ""; clearSig(true); renderAll(); renderJobsList(); loadJobs();
 }
 function route(){
   const h = location.hash;
