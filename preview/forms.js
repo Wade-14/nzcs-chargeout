@@ -661,7 +661,7 @@ FORMS.access = {
       { id:"ctrlOtherNotes", type:"textarea", label:"Comments / conditions", showIf:disc("ctrlOtherDisc") },
     ]},
     { title: "Hazards", fields: [
-      // HAZARD_TEXT: Wade to send the pre-filled hazards wording
+      { type:"notice", text:"The contractor has been advised that my property is a hazardous place and I have notified them of unusual hazards on my property." },
       { id:"unusualHazards", type:"textarea", label:"Unusual hazards (list)" },
     ]},
     { title: "Landowner / occupier details", fields: [
