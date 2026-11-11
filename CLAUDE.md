@@ -23,6 +23,8 @@ Field-staff forms app for NZ Conservation Services Ltd (Southland, NZ). Staff fi
 - `icon-*.png`: app icons made from the round emblem on white; `-maskable` versions keep the emblem inside the safe zone for Android shapes. A sharper original logo (512 px or larger) would give a crisper icon.
 - `preview/`: a full copy of the app for testing. Same files.
 - `worker/`: Cloudflare Worker (`src/index.js`), D1 schema (`schema.sql`), `wrangler.toml`.
+- `docs/staff-quick-guide.md`: the **staff quick guide** (install on iPhone/Android, first use, filling in forms, Charge Out, incidents, sending in vs out of reception, rules, troubleshooting). Copy of the Claude Doc https://claude.ai/artifact/WkEqjbzb7kZtZ7N4TNMv93, which Wade prints for staff. **When a change affects anything in it** (folders, buttons, recipients, offline behaviour, a form's steps), update this file in the same commit and tell Wade the Claude Doc / printed copy needs the same change (offer to update the doc). Two rules in it ("one Charge Out per job", "fill in forms on the day") were suggested by Claude; Wade hasn't confirmed them yet.
+- Handover guide for giving a co-worker access (GitHub collaborator, their own Claude Pro account, optional Cloudflare token): Claude Doc https://claude.ai/artifact/QBqifrCcFoT27gjTfTEN8Y.
 
 ## Release process
 
