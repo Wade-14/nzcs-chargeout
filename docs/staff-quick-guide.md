@@ -46,34 +46,42 @@ All forms work the same way: fill in top to bottom, sign, then tap **Send PDF**.
 
 ## Charge Out
 
-There are two Charge Outs in the **Charge Out Forms** folder: **Charge Out – Pest Control** and **Charge Out – Environmental Enhancement**. Pick the one for the type of work. They work exactly the same way, and each has its own Jobs in progress.
+There are two Charge Outs in the **Charge Out Forms** folder: **Charge Out – Pest Control** and **Charge Out – Environmental Enhancement**. Pick the one for the type of work. They work the same way, each has its own Jobs in progress, and both go to Sam once the job is finished. One job can run over several days and several phones.
 
-The Charge Out records each day on a job and goes to Sam once the job is finished. One job can run over several days and several phones.
-
-1. Fill in the day: job or farm, who worked, **hours worked and travelled for each person**, KMs, materials used and comments.
-2. Answer **Job complete?**
+1. Fill in the job name, then tap **People on site** and tick everyone who worked. A row for each person appears under **Hours & travel**.
+2. Type each person's **hours worked and travelled** (or track the time, see below), then KMs, materials and comments.
+3. Answer **Job complete?**
     - **No:** tap Save. The job goes into **Jobs in progress**, so anyone can add the next day from their own phone.
     - **Yes:** the job is finished. Tap **Send PDF to Sam** to send one PDF with every day.
-3. Pick your name under **Filled in by** and sign.
+4. Pick your name under **Filled in by** and sign.
 
-To add a day to an existing job, open **Jobs in progress** and tap the job. To fix a past day, use its **Edit** button. Only managers can delete a job.
+To add a day to an existing job, open **Jobs in progress** and tap the job, then **Add day**. To fix a past day, use its **Edit** button. Only managers can delete a job. A Charge Out you're filling in stays on your phone even if the app is closed.
 
-A Charge Out you're filling in stays on your phone even if the app is closed.
+### Hours: type them, or track the time
 
-**Tracking time (both Charge Outs, optional):** on Pest Control, typing your hours is the usual way; tap **track time instead** only if you want the clock. On Environmental Enhancement it's the **Start tracking time now** button.
+Typing hours is always fine, and on **Pest Control** it's the usual way. Tracking is optional: on Pest Control tap **track time instead**; on Environmental Enhancement tap **Start tracking time now**.
 
-1. At the start of the day, type the job name (or open the job from Jobs in progress and tap Add day), then tap **Start tracking time now**. You can close the app.
-2. At the end of the day, open **Jobs in progress → Days being tracked** on any crew phone and tap the job. Tick who worked and tap **Stop tracking time**.
+1. At the start of the day, type the job name (or open the job from Jobs in progress and tap Add day), then start tracking. You can close the app.
+2. At the end of the day, open **Jobs in progress → Days being tracked** on any crew phone, tap the job, tick who worked and tap **Stop tracking time**.
 3. Type any **break** in minutes and each person's **travel**. Hours worked fill in by themselves: total time (to the nearest quarter hour) minus break, minus that person's travel.
-4. Finish the form and save as usual: **No** keeps the job in progress for tomorrow, **Yes** finishes it and sends it to Sam.
+4. Finish the form and save as usual.
 
-Start and Stop need signal.
+**Tapped Start or Stop at the wrong time?** Change the **Started** / **Finished** time boxes and hours worked update. **Forgot to start?** Just type the hours. Start and Stop need signal.
 
-**Materials (Pest Control):** pick from the list (Feratox pills, Feratox bio bags, high strength brodifacoum (HSB), Sentry, Sentry Plus, pre-feed, or Other) and type the amount with its unit.
+### Materials
 
-**Materials (Environmental Enhancement):** pick each material from the list (CombiGuard, diluted chemical – glyphosate or other, cut and paste gel, plants, fertiliser, or Other) and type the quantity; the unit is shown. For another diluted chemical, type what the chemical was. For plants from another nursery, type which nursery and what plants.
+The form starts with 3 material boxes; **+ Add material** adds more. Pick each material from the list and type the quantity. The unit is shown, so just type the number. Pick **Other** for anything not on the list and type what it was.
 
-**Tapped Start or Stop at the wrong time?** Change the **Started** / **Finished** time boxes in the tracking box and hours worked update. **Forgot to start tracking?** Just type hours worked and travel by hand, as before.
+| Pest Control | Unit | Environmental Enhancement | Unit |
+| --- | --- | --- | --- |
+| Feratox pills | units | CombiGuard | units |
+| Feratox bio bags | units | Diluted chemical – glyphosate | litres |
+| High strength brodifacoum (HSB) | kg | Diluted chemical – other (type the chemical) | litres |
+| Sentry | units | Cut and paste gel | grams |
+| Sentry Plus | units | Plants – NZCS supply | units |
+| Pre-feed | kg | Plants – other nursery supply (type the nursery and plants) | units |
+| Other (type it) | your own | Fertiliser | type amount and unit |
+|  |  | Other (type it) | your own |
 
 ## Incident / Accident Report
 
@@ -96,7 +104,7 @@ The app opens and forms can be filled in with no signal. **Sending, saving and s
 | **Send PDF** | Emails straight to the office and says **Sent to…** | Says the email didn't send. Keep the app open and tap Send again when you have signal |
 | Charge Out: Save (job not complete) | Saves to Jobs in progress | Your day stays on the phone. Tap Save again in signal |
 | Incident report: Submit report | Goes to the managers | Keep the app open and submit when you have signal |
-| Start / Stop tracking time | Records the time | Needs signal; try again when you have it (the clock is only recorded when it reaches the office) |
+| Charge Out: Start / Stop tracking time | Records the time | Needs signal. Try again when you have it, or just type the hours |
 
 **The golden rule out of reception: don't close the app** until the form is sent. Most forms are wiped when the app is fully closed. Locking the phone or switching to another app is fine.
 
