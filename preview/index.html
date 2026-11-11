@@ -558,14 +558,14 @@ const ENVIRO_MATS = [
   {name:"Plants – other nursery supply", unit:"units", ask:[{key:"nursery", tag:"nursery", label:"Which nursery?", err:"Type the nursery.", ph:"Nursery name"}, {key:"plants", tag:"plants", label:"What plants?", err:"Type what plants they were.", ph:"Plant types"}]},
   {name:"Fertiliser"},
 ];
-// Pest Control list (Wade, 11-11-2026). No units given yet, so staff type the amount and unit.
+// Pest Control list and units (Wade, 11-11-2026).
 const PEST_MATS = [
-  {name:"Feratox pills"},
-  {name:"Feratox bio bags"},
-  {name:"High strength brodifacoum (HSB)"},
-  {name:"Sentry"},
-  {name:"Sentry Plus"},
-  {name:"Pre-feed"},
+  {name:"Feratox pills", unit:"units"},
+  {name:"Feratox bio bags", unit:"units"},
+  {name:"High strength brodifacoum (HSB)", unit:"kg"},
+  {name:"Sentry", unit:"units"},
+  {name:"Sentry Plus", unit:"units"},
+  {name:"Pre-feed", unit:"kg"},
 ];
 const MATS = () => (typeof CO !== "undefined" && CO_KINDS[CO].mats) || [];
 const pickMats = () => MATS().length > 0;
