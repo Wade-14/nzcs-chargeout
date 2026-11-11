@@ -69,6 +69,8 @@ A Charge Out you're filling in stays on your phone even if the app is closed.
 
 Start and Stop need signal.
 
+**Tapped Start or Stop at the wrong time?** Change the **Started** / **Finished** time boxes in the tracking box and hours worked update. **Forgot to start tracking?** Just type hours worked and travel by hand, as before.
+
 ## Incident / Accident Report
 
 Staff fill in their part and tap **Submit report**. It isn't emailed: it goes straight to the managers, who investigate and then send the finished report. Once submitted, staff can't open it again. That keeps injury and medical details private.

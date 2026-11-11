@@ -582,6 +582,9 @@ const totalOf = (d, k) => d.people.reduce((s,p) => s + n(hoursOf(d,p,k)), 0);
    Hours worked = (stop - start - break), rounded to the nearest quarter hour, minus each person's travel. */
 const tracks = () => !!CO_KINDS[CO].tracking && state.mode !== "editDay";
 const clock = iso => { const d = new Date(iso), h = d.getHours(); return `${h % 12 || 12}:${String(d.getMinutes()).padStart(2, "0")} ${h < 12 ? "am" : "pm"}`; };
+const hhmm = iso => { const d = new Date(iso); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+// "07:30" on the day tracking started -> ISO time
+const atTime = (baseIso, v) => { const d = new Date(baseIso), [h, m] = v.split(":").map(Number); d.setHours(h, m, 0, 0); return d.toISOString(); };
 const hrsMins = ms => { const m = Math.max(0, Math.round(ms / 60000)); return `${Math.floor(m / 60)} hrs ${m % 60} mins`; };
 function trackedTotal(){   // hours, after break, to the nearest quarter
   if (!state.startedAt || !state.stoppedAt) return null;
@@ -605,11 +608,14 @@ function renderTrack(){
       <span class="hint">${state.mode === "addDay" ? "Starts the clock for this day." : "Type the job name, then start."} You can close the app. At the end of the day, open it from Jobs in progress and tap Stop.</span>`;
   } else if (!state.stoppedAt){
     html = `<span>Tracking since <b class="big">${esc(clock(state.startedAt))}</b> · <span id="track-elapsed">${esc(hrsMins(Date.now() - new Date(state.startedAt)))}</span> so far</span>
+      <div class="row"><label for="f-track-start" style="margin:0">Started at</label><input type="time" id="f-track-start" value="${hhmm(state.startedAt)}"><span class="hint">Change it if Start was tapped late.</span></div>
       <div class="row"><button type="button" class="btn-hivis" id="btn-track-stop">Stop tracking time</button><span id="track-cancel-wrap"><button type="button" class="btn-small btn-ghost" id="btn-track-cancel">Cancel tracking</button></span></div>
       <span class="hint">Fill in the rest of the form whenever you like. Hours worked fill in when you tap Stop.</span>`;
   } else {
     const tot = trackedTotal();
     html = `<span>Tracked <b>${esc(clock(state.startedAt))} – ${esc(clock(state.stoppedAt))}</b> (${esc(hrsMins(new Date(state.stoppedAt) - new Date(state.startedAt)))})</span>
+      <div class="row"><label for="f-track-start" style="margin:0">Started</label><input type="time" id="f-track-start" value="${hhmm(state.startedAt)}"><label for="f-track-end" style="margin:0">Finished</label><input type="time" id="f-track-end" value="${hhmm(state.stoppedAt)}"></div>
+      <span class="hint">Tapped Start or Stop at the wrong time? Change the times and hours worked update.</span>
       <div class="row"><label for="f-break" style="margin:0">Break (mins)</label><input type="number" id="f-break" inputmode="numeric" min="0" step="5" placeholder="0" value="${esc(state.breakMins)}"></div>
       <span>Total time: <b class="big" id="track-total">${fmt(tot)} hrs</b></span>
       <span class="hint">Rounded to the nearest quarter hour. Each person's hours worked = total time minus their travel. Type travel below and hours worked update.</span>`;
@@ -637,6 +643,20 @@ async function stopTracking(){
     btn.disabled = false;
     if (/already been saved or cancelled/.test(err.message)){ state.timerId = null; state.startedAt = ""; save(); trackMsg = err.message; renderTrack(); return; }
     trackStatus(err.offline ? "Stopping the clock needs signal. Try again when you have signal; the time keeps counting." : err.message, true);
+  }
+}
+async function changeTrackTime(el){
+  const iso = atTime(state.startedAt, el.value), body = el.id === "f-track-start" ? {started_at:iso} : {stopped_at:iso};
+  const start = body.started_at || state.startedAt, stop = body.stopped_at || state.stoppedAt;
+  if (stop && new Date(stop) <= new Date(start)){ el.value = hhmm(el.id === "f-track-start" ? state.startedAt : state.stoppedAt); return trackStatus("The finish time must be after the start time.", true); }
+  if (new Date(iso) > Date.now() + 5 * 60000){ el.value = hhmm(el.id === "f-track-start" ? state.startedAt : state.stoppedAt); return trackStatus("That time is in the future.", true); }
+  const apply = () => { state.startedAt = start; state.stoppedAt = stop || ""; if (state.stoppedAt) fillTrackedHours(); save(); renderTrack(); renderHours(); renderBar(); };
+  try{ await api("PUT", `/api/timers/${state.timerId}`, body); apply(); trackStatus("Time changed."); }
+  catch(err){
+    // Once stopped, the day is finished on this phone, so a change can be kept here without signal.
+    if (err.offline && state.stoppedAt){ apply(); trackStatus("Time changed on this phone."); return; }
+    el.value = hhmm(el.id === "f-track-start" ? state.startedAt : state.stoppedAt);
+    trackStatus(err.offline ? "Changing the start time needs signal while the clock is running." : err.message, true);
   }
 }
 // Load a tracked day from Jobs in progress onto this phone.
@@ -747,6 +767,7 @@ form.addEventListener("input", e => {
 });
 form.addEventListener("change", e => {
   const el = e.target;
+  if ((el.id === "f-track-start" || el.id === "f-track-end") && el.value) return changeTrackTime(el);
   if (el.id === "f-signedby"){ state.signedBy = el.value; $("#err-signedby").hidden = true; save(); return; }
   if (el.dataset.person){
     const nm = el.dataset.person;
@@ -906,7 +927,7 @@ function renderJobsList(error){
   host.innerHTML = jobsHead("Jobs in progress") +
     (error ? `<p class="status bad">${esc(error)}</p>` : "") +
     (timersCache.length ? `<h3 style="margin:4px 0 8px">Days being tracked</h3><div class="jobs-list" style="margin-bottom:14px">` + timersCache.map(t => `<button type="button" class="job-card tracking" data-timer="${t.id}">
-        <span class="tag">${t.stopped_at ? "Stopped" : "Tracking"} since ${esc(clock(t.started_at))}${new Date(t.started_at).toDateString() !== new Date().toDateString() ? " " + esc(dmy(t.started_at.slice(0,10))) : ""}</span>
+        <span class="tag">${t.stopped_at ? `Stopped · ${esc(clock(t.started_at))} – ${esc(clock(t.stopped_at))}` : `Tracking since ${esc(clock(t.started_at))}`}${new Date(t.started_at).toDateString() !== new Date().toDateString() ? " " + esc(dmy(t.started_at.slice(0,10))) : ""}</span>
         <span class="jn">${esc(t.job_name)}</span>
         <span class="meta">${t.id === state.timerId ? "Open on this phone" : "Tap to open on this phone and finish the day"}</span>
       </button>`).join("") + `</div>` : "") +

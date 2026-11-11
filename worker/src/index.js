@@ -261,6 +261,18 @@ async function handle(req, env, ctx) {
       return json(req, env, { timer });
     }
     if (!m[2] && req.method === "GET") return json(req, env, { timer });
+    // Fix a start or finish time that was tapped late or early.
+    if (!m[2] && req.method === "PUT") {
+      const body = await readBody(req);
+      const ok = v => v && !isNaN(Date.parse(v)) && Date.parse(v) <= Date.now() + 5 * 60000;
+      const start = body.started_at !== undefined ? body.started_at : timer.started_at;
+      const stop = body.stopped_at !== undefined ? body.stopped_at : timer.stopped_at;
+      if (!ok(start) || (stop && !ok(stop))) return fail(req, env, 400, "That time isn't valid, or it's in the future.");
+      if (stop && Date.parse(stop) <= Date.parse(start)) return fail(req, env, 400, "The finish time must be after the start time.");
+      const s2 = new Date(start).toISOString(), e2 = stop ? new Date(stop).toISOString() : null;
+      await env.DB.prepare("UPDATE timers SET started_at = ?2, stopped_at = ?3 WHERE id = ?1").bind(id, s2, e2).run();
+      return json(req, env, { timer: { ...timer, started_at: s2, stopped_at: e2 } });
+    }
   }
   // List jobs: /api/jobs?status=open|complete
   if (path === "/api/jobs" && req.method === "GET") {
