@@ -1432,7 +1432,10 @@ async function share(){
   if (mailOn()){
     const btn = $("#g-share"); if (btn) btn.disabled = true; status("Sending…");
     try{ await window.NZCS_HOOKS.emailPdf(file, FORMS[current].sendTo, file.name.replace(/\.pdf$/, ""), window.NZCS_HOOKS.emailText(FORMS[current].title, purposeOf(FORMS[current], values()), staffNames(FORMS[current], values()))); status("Sent to " + FORMS[current].sendToLabel + " (" + to + "). Tap Clear form when you're done."); if (btn){ btn.disabled = false; btn.textContent = "Send again"; } return; }
-    catch(err){ window.NZCS_HOOKS.mailFailed(); if (btn){ btn.disabled = false; btn.textContent = "Share PDF instead"; } const h = $("#g-share-hint"); if (h) h.textContent = shareHint();
+    catch(err){
+      if (err.offline){ try{ await window.NZCS_HOOKS.queueMail(file, FORMS[current].sendTo, file.name.replace(/\.pdf$/, ""), window.NZCS_HOOKS.emailText(FORMS[current].title, purposeOf(FORMS[current], values()), staffNames(FORMS[current], values())), FORMS[current].sendToLabel);
+        if (btn){ btn.disabled = true; btn.textContent = "In the Outbox"; } return status("No signal. Saved in the Outbox: it will send by itself next time the app is open with signal. You can clear the form now."); }catch(e2){} }
+      window.NZCS_HOOKS.mailFailed(); if (btn){ btn.disabled = false; btn.textContent = "Share PDF instead"; } const h = $("#g-share-hint"); if (h) h.textContent = shareHint();
       return status((err.offline ? "No signal, so the email didn't send." : err.message) + " Tap Share PDF instead to use your phone's share menu.", true); }
   }
   try{ navigator.clipboard && navigator.clipboard.writeText(to).catch(() => {}); }catch(e){}
