@@ -124,6 +124,11 @@ table.hrs tfoot td{font-weight:700;padding-top:10px;border-top:1px solid var(--l
 .done-box b{font-size:16px}
 .done-box .btns{display:flex;flex-wrap:wrap;gap:8px}
 .confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px}
+.outbox{background:var(--amber-soft);color:var(--amber);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;display:grid;gap:8px;font-weight:600}
+.outbox.ok{background:var(--forest-soft);color:var(--forest)}
+.outbox ul{margin:0;padding-left:18px;font-weight:400;color:var(--ink)}
+.outbox li{margin:6px 0}
+.outbox .btns{gap:6px}
 .install{background:var(--surface);border:1px solid var(--forest);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;display:grid;gap:10px}
 .install-top{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .install-top img{width:40px;height:40px;border-radius:9px;flex:none}
@@ -314,6 +319,7 @@ body.drawer-open .drawer-shade{opacity:1;pointer-events:auto}
     <div id="install-help" hidden></div>
   </div>
 
+  <div class="outbox" id="outbox-bar" hidden></div>
   <div id="folder-root">
     <p class="home-sub">Choose a folder</p>
     <div class="tiles" id="folder-tiles"></div>
@@ -520,8 +526,9 @@ async function api(method, path, body){
 }
 function lock(msg){ store.del(AUTH_KEY); auth = null; document.body.classList.add("locked"); const e = $("#gate-err"); if (msg){ e.textContent = msg; e.hidden = false; } }
 /* ---------- automatic email (server sends the PDF from the forms Gmail account) ---------- */
-let mailOn = false, mailFailed = false;
-async function checkMail(){ try{ mailOn = !!(await api("GET", "/api/mail")).ready; }catch(e){ mailOn = false; } }
+// Remembered so the app knows it can email (and queue in the Outbox) when it opens with no signal.
+let mailOn = !!store.get("nzcs.mailReady", false), mailFailed = false;
+async function checkMail(){ try{ mailOn = !!(await api("GET", "/api/mail")).ready; store.set("nzcs.mailReady", mailOn); }catch(e){ /* keep the last known answer */ } }
 const fileB64 = file => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1] || ""); r.onerror = () => bad(new Error("Couldn't read the PDF.")); r.readAsDataURL(file); });
 // Short summary shown above the PDF in the email: form, when sent, job / purpose, staff.
 function emailText(form, purpose, staff){
@@ -533,8 +540,88 @@ function emailText(form, purpose, staff){
   return L.join("\n");
 }
 async function emailPdf(file, to, subject, text){ return api("POST", "/api/mail", {to, subject, filename: file.name, pdf: await fileB64(file), text: text || ""}); }
+
+/* ---------- Outbox: finished forms sent with no signal wait on the phone and send themselves later ----------
+   Only finished forms being emailed go here (not Charge Out days saved to Jobs in progress, not incident submissions).
+   Kept in IndexedDB (PDFs with photos are too big for localStorage); survives closing the app and restarting the phone. */
+const OUTBOX_DB = "nzcs-outbox";
+function outboxDB(){
+  return new Promise((ok, bad) => { const r = indexedDB.open(OUTBOX_DB, 1); r.onupgradeneeded = () => r.result.createObjectStore("mail", {keyPath:"id"}); r.onsuccess = () => ok(r.result); r.onerror = () => bad(r.error); });
+}
+async function outboxDo(mode, fn){ const db = await outboxDB(); return new Promise((ok, bad) => { const tx = db.transaction("mail", mode), st = tx.objectStore("mail"); const r = fn(st); tx.oncomplete = () => ok(r && r.result); tx.onerror = () => bad(tx.error); }); }
+const outboxAll = () => outboxDo("readonly", st => st.getAll()).then(a => (a || []).sort((x, y) => x.queuedAt.localeCompare(y.queuedAt)));
+const outboxPut = item => outboxDo("readwrite", st => st.put(item));
+const outboxDel = id => outboxDo("readwrite", st => st.delete(id));
+let outboxSent = [], outboxBusy = false;
+const newId = () => crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random();
+// A server save made with no signal: a finished Charge Out (then emailed) or an incident submission.
+async function queueSave(kind, method, path, body, subject, who){
+  await outboxPut({id:newId(), kind, method, path, body, subject, who, queuedAt:new Date().toISOString(), lastError:""});
+  renderOutbox();
+}
+async function queueMail(file, to, subject, text, who){
+  await outboxPut({id: newId(), kind:"mail", to, subject, text: text || "", who: who || to.join(", "), filename: file.name, blob: file, queuedAt: new Date().toISOString(), lastError: ""});
+  renderOutbox();
+}
+async function flushOutbox(){
+  if (outboxBusy || !auth) return;   // incident submissions go even if email isn't set up
+  let items; try{ items = await outboxAll(); }catch(e){ return; }
+  if (!items.length) return;
+  outboxBusy = true;
+  try{
+    for (const it of items){
+      try{
+        if (it.kind === "cofinish"){
+          // Save the finished job, then email its PDF; once saved it becomes an ordinary email in the Outbox.
+          const {job} = await api(it.method, it.path, it.body);
+          const file = makeFile(job), people = Array.from(new Set(job.days.flatMap(d => d.people || [])));
+          await outboxDel(it.id);
+          await outboxPut({id:newId(), kind:"mail", to:SEND_LIST, subject:fileTitle(job), text:emailText(CO_KINDS[kindOf(job)].name, job.job_name, people), who:SEND_WHO, filename:file.name, blob:file, queuedAt:it.queuedAt, lastError:""});
+          loadJobs(); outboxBusy = false; return flushOutbox();
+        }
+        if (it.kind === "incident"){ await api(it.method, it.path, it.body); await outboxDel(it.id); outboxSent.push(it.subject); loadIncidents(); continue; }
+        if (!mailOn) continue;
+        const file = new File([it.blob], it.filename, {type:"application/pdf"});
+        await emailPdf(file, it.to, it.subject, it.text);
+        await outboxDel(it.id); outboxSent.push(it.subject);
+      }catch(err){
+        if (err.offline) break;   // still no signal: try again later
+        it.lastError = err.message; await outboxPut(it);
+      }
+    }
+  } finally { outboxBusy = false; renderOutbox(); }
+}
+const ago = iso => { const d = new Date(iso), p2 = x => String(x).padStart(2, "0"), h = d.getHours(); return `${p2(d.getDate())}-${p2(d.getMonth()+1)} ${h % 12 || 12}:${p2(d.getMinutes())} ${h < 12 ? "am" : "pm"}`; };
+async function renderOutbox(){
+  const bar = $("#outbox-bar"); if (!bar) return;
+  let items = []; try{ items = await outboxAll(); }catch(e){}
+  if (!items.length && !outboxSent.length){ bar.hidden = true; return; }
+  bar.hidden = false; bar.className = "outbox" + (items.length ? "" : " ok");
+  const sent = outboxSent.length ? `<span>✓ Sent from the Outbox: ${outboxSent.map(esc).join(", ")}</span>` : "";
+  const waiting = items.length ? `<span>${items.length === 1 ? "1 form is" : items.length + " forms are"} waiting to send. ${navigator.onLine ? "Sending when the connection allows." : "They'll send by themselves next time the app is open with signal."}</span>
+    <ul>${items.map(it => `<li><b>${esc(it.subject)}</b><br><span class="hint">To ${esc(it.who)} · saved ${esc(ago(it.queuedAt))}${it.lastError ? ` · <span style="color:var(--red,#b42318)">${esc(it.lastError)}</span>` : ""}</span>
+      <div class="btns" style="margin-top:4px">${it.blob ? `<button type="button" class="btn-small" data-ob-share="${it.id}">Share instead</button>` : ""}<span data-ob-delwrap="${it.id}"><button type="button" class="btn-small btn-ghost" data-ob-del="${it.id}">Delete</button></span></div></li>`).join("")}</ul>
+    <div class="btns"><button type="button" class="btn-small btn-primary" id="btn-ob-send">Try sending now</button></div>` : "";
+  bar.innerHTML = sent + waiting + (!items.length ? `<div class="btns"><button type="button" class="btn-small btn-ghost" id="btn-ob-ok">OK</button></div>` : "");
+}
+document.addEventListener("click", async e => {
+  const t = e.target;
+  if (t.id === "btn-ob-send"){ t.disabled = true; t.textContent = "Sending…"; await checkMail(); await flushOutbox(); return; }
+  if (t.id === "btn-ob-ok"){ outboxSent = []; renderOutbox(); return; }
+  if (t.dataset.obDel){ t.closest("[data-ob-delwrap]").innerHTML = `<span class="confirm">Delete this form? It won't be sent. <button type="button" class="btn-small btn-danger" data-ob-delyes="${t.dataset.obDel}">Delete</button></span>`; return; }
+  if (t.dataset.obDelyes){ await outboxDel(t.dataset.obDelyes); renderOutbox(); return; }
+  if (t.dataset.obShare){
+    const it = (await outboxAll()).find(x => x.id === t.dataset.obShare); if (!it) return;
+    const file = new File([it.blob], it.filename, {type:"application/pdf"});
+    try{ navigator.clipboard && navigator.clipboard.writeText(it.to.join(", ")).catch(() => {}); }catch(e2){}
+    if (canShareFiles){ try{ await navigator.share({files:[file], title:it.subject}); await outboxDel(it.id); renderOutbox(); }catch(e2){} }
+    else downloadFile(file);
+  }
+});
+window.addEventListener("online", () => { checkMail().then(flushOutbox); });
+setInterval(() => { if (navigator.onLine && !document.hidden) flushOutbox(); }, 60000);
 const SHARE_HINT = who => canShareFiles ? `Opens your phone's share menu with the PDF attached. Pick Gmail or Outlook, then paste ${who} into the To line (it's copied for you).` : "Download the PDF, then use Open email and attach it from your Downloads.";
-function unlock(){ checkMail(); document.body.classList.remove("locked"); const mgr = !(auth && auth.role === "manager"); $("#role-pill").hidden = mgr; $("#role-pill-home").hidden = mgr; route(); loadJobs(); loadIncidents(); }
+function unlock(){ checkMail().then(flushOutbox); renderOutbox(); document.body.classList.remove("locked"); const mgr = !(auth && auth.role === "manager"); $("#role-pill").hidden = mgr; $("#role-pill-home").hidden = mgr; route(); loadJobs(); loadIncidents(); }
 $("#gate-form").addEventListener("submit", async e => {
   e.preventDefault();
   const code = $("#gate-code").value.trim(), err = $("#gate-err"), btn = $("#gate-go");
@@ -968,6 +1055,15 @@ async function saveDay(){
       $("#finish").scrollIntoView({block:"start"});
     }
   }catch(err){
+    if (err.offline && complete && mailOn){
+      try{
+        const body = state.mode === "new" ? {job_name:state.job.trim(), kind:CO, day:dayPayload(), complete:true, timer_id:state.timerId} : {day:dayPayload(), complete:true, timer_id:state.timerId};
+        const path = state.mode === "new" ? "/api/jobs" : `/api/jobs/${state.jobId}/days`;
+        await queueSave("cofinish", "POST", path, body, `${CO_KINDS[CO].name}: ${jobName()} (finished)`, SEND_WHO);
+        resetForm(); const s2 = $("#save-status"); if (s2){ s2.textContent = "No signal. The finished job is saved in the Outbox: next time the app is open with signal it will be saved and the PDF sent to " + SEND_WHO + " automatically."; }
+        $("#finish").scrollIntoView({block:"start"}); return;
+      }catch(e2){}
+    }
     btn.disabled = false; st.className = "status bad";
     st.textContent = err.offline ? "No signal. Nothing is lost: your day is kept on this phone. Tap Save again when you have signal." : err.message;
   }
@@ -1108,7 +1204,7 @@ $("#jobs-host").addEventListener("click", async e => {
   }
   if (id === "job-cancel") return renderJob();
 });
-document.addEventListener("visibilitychange", () => { if (!document.hidden && auth){ loadJobs(); loadIncidents(); } });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && auth){ loadJobs(); loadIncidents(); flushOutbox(); } });
 
 /* ---------- PDF ---------- */
 // Add up material quantities that share a unit ("33 L" + "20 L" = "53 L"); otherwise list them.
@@ -1228,7 +1324,10 @@ async function sharePdf(){
   if (mailOn && !mailFailed){
     const btn = $("#btn-share"); if (btn) btn.disabled = true; sendStatus("Sending…");
     try{ await emailPdf(file, SEND_LIST, fileTitle(finished), emailText(CO_KINDS[kindOf(finished)].name, finished.job_name, Array.from(new Set(finished.days.flatMap(d => d.people || []))))); sendStatus("Sent to " + SEND_WHO + " (" + SEND_TO + ")."); if (btn){ btn.disabled = false; btn.textContent = "Send again"; } return; }
-    catch(err){ mailFailed = true; if (btn){ btn.disabled = false; btn.textContent = "Share PDF instead"; } const h = $("#share-hint"); if (h) h.textContent = SHARE_HINT("the addresses");
+    catch(err){
+      if (err.offline){ try{ await queueMail(file, SEND_LIST, fileTitle(finished), emailText(CO_KINDS[kindOf(finished)].name, finished.job_name, Array.from(new Set(finished.days.flatMap(d => d.people || [])))), SEND_WHO);
+        if (btn){ btn.disabled = true; btn.textContent = "In the Outbox"; } return sendStatus("No signal. Saved in the Outbox: it will send by itself next time the app is open with signal. You can tap Done, start a new form."); }catch(e2){} }
+      mailFailed = true; if (btn){ btn.disabled = false; btn.textContent = "Share PDF instead"; } const h = $("#share-hint"); if (h) h.textContent = SHARE_HINT("the addresses");
       return sendStatus((err.offline ? "No signal, so the email didn't send." : err.message) + " Tap Share PDF instead to use your phone's share menu.", true); }
   }
   try{ navigator.clipboard && navigator.clipboard.writeText(SEND_TO).catch(() => {}); }catch(e){}
@@ -1440,6 +1539,8 @@ async function openInvestigation(id){
 }
 window.NZCS_HOOKS = {
   mail: () => ({on: mailOn && !mailFailed}),
+  queueMail,
+  queueIncident: body => queueSave("incident", "POST", "/api/incidents", body, "Incident / accident report" + (body.reported_by ? " from " + body.reported_by : ""), "the managers"),
   mailFailed: () => { mailFailed = true; },
   emailPdf, emailText,
   submitIncident: body => api("POST", "/api/incidents", body),

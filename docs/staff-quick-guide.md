@@ -101,14 +101,15 @@ The app opens and forms can be filled in with no signal. **Sending, saving and s
 | --- | --- | --- |
 | Opening the app, filling in forms, signing, photos | Works | Works (after you've opened the app once with signal) |
 | Use my location | Address, map and GPS | GPS numbers only; type the address if you need it |
-| **Send PDF** | Emails straight to the office and says **Sent to…** | Says the email didn't send. Keep the app open and tap Send again when you have signal |
+| **Send PDF** | Emails straight to the office and says **Sent to…** | Saved in the Outbox; sends by itself next time the app is open with signal |
 | Charge Out: Save (job not complete) | Saves to Jobs in progress | Your day stays on the phone. Tap Save again in signal |
-| Incident report: Submit report | Goes to the managers | Keep the app open and submit when you have signal |
+| Charge Out: Finish job (job complete) | Saves and you send the PDF | Saved in the Outbox; saved and emailed by itself when there's signal |
+| Incident report: Submit report | Goes to the managers | Saved in the Outbox; goes to the managers when there's signal |
 | Charge Out: Start / Stop tracking time | Records the time | Needs signal. Try again when you have it, or just type the hours |
 
-**The golden rule out of reception: don't close the app** until the form is sent. Most forms are wiped when the app is fully closed. Locking the phone or switching to another app is fine.
+**Out of reception, just send it.** When you tap **Send PDF** (or **Finish job** on a Charge Out, or **Submit report** on an incident report) with no signal, the form is saved in the **Outbox** on your phone. The home screen shows "forms waiting to send". It sends by itself the next time the app is open with signal; you'll see "Sent from the Outbox". On iPhone, open the app once you're back in reception so it can send.
 
-If you can't wait for signal, tap **Share PDF instead** after a failed send. Pick your email app; it sends the email by itself once you're back in signal. Or use **Download PDF** to keep a copy on the phone.
+Charge Out days saved with **Job complete: No** still need signal: your day stays on the phone, tap Save again when you have signal. Until a form is sent or in the Outbox, don't close the app fully, or the form is wiped.
 
 ## Rules
 
@@ -123,7 +124,8 @@ If you can't wait for signal, tap **Share PDF instead** after a failed send. Pic
 | --- | --- |
 | "Your share code has changed" | Ask your manager for the current code |
 | A form you need isn't there, or looks old | Fully close the app and open it again |
-| Send says the email didn't send | Get signal and tap Send again, or tap Share PDF instead |
+| Forms waiting in the Outbox | Open the app where there's signal; tap Try sending now if needed |
+| Send says the email didn't send (with signal) | Tap Share PDF instead |
 | Use my location does nothing | Allow location for the app (or for Safari / Chrome) in your phone's settings |
 | A box is red and it won't send | Fill in the red box, then tap Send again |
 | The signature box won't draw | Scroll so the whole box is on screen, then sign |
