@@ -1,5 +1,5 @@
 // Keeps the app working with no signal: serves saved copies, refreshes them when online.
-const CACHE = "nzcs-chargeout-v50";
+const CACHE = "nzcs-chargeout-v51";
 const FILES = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "vendor/jspdf.umd.min.js", "vendor/jspdf.plugin.autotable.min.js", "forms.js", "vendor/logo.js", "icon-192-maskable.png", "icon-512-maskable.png"];
 self.addEventListener("install", e => {
   // Cache each file on its own so one missing file can't stop the rest.
@@ -17,14 +17,30 @@ self.addEventListener("fetch", e => {
   }).catch(() => caches.match(e.request).then(hit => hit || caches.match("index.html"))));
 });
 
-// Incident alerts: the server sends an empty "ping"; show a notification that opens the incident list.
-self.addEventListener("push", e => {
-  e.waitUntil(self.registration.showNotification("Incident reported", {
-    body: "A new incident / accident report needs investigation. Tap to open it.",
-    icon: "icon-192.png", badge: "icon-192.png", tag: "nzcs-incident", renotify: true,
-    data: { url: self.registration.scope + "#incident-report" }
-  }));
-});
+// Manager alerts: the server sends an empty "ping", then the app asks what it was about
+// (an incident report, or the monthly "check Jobs in progress" reminder) and shows the right notification.
+const API = /^(localhost|127\.0\.0\.1)$/.test(self.location.hostname) ? "http://localhost:8787" : "https://nzcs-chargeout-api.royal-dawn-9e17.workers.dev";
+const NOTE = {
+  incident: () => ({title: "Incident reported", body: "A new incident / accident report needs investigation. Tap to open it.", url: "#incident-report"}),
+  jobs: n => ({title: "Charge Outs in progress", body: `${n} Charge Out job${n === 1 ? " is" : "s are"} in progress. Check whether any can be finished and sent for end-of-month invoicing.`, url: "#folder-chargeout"}),
+};
+async function showNotices(){
+  let notices = [];
+  try{
+    const sub = await self.registration.pushManager.getSubscription();
+    const r = await fetch(API + "/api/push/notices", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({endpoint: sub ? sub.endpoint : ""})});
+    if (r.ok) notices = (await r.json()).notices || [];
+  }catch(e){}
+  if (!notices.length) notices = [{id: "latest", type: "incident", count: 0}];   // can't tell: incidents are the urgent case
+  const shown = await self.registration.getNotifications();
+  for (const n of notices){
+    const tag = "nzcs-" + n.id;
+    if (shown.some(x => x.tag === tag)) continue;
+    const t = (NOTE[n.type] || NOTE.incident)(n.count);
+    await self.registration.showNotification(t.title, {body: t.body, icon: "icon-192.png", badge: "icon-192.png", tag, data: {url: self.registration.scope + t.url}});
+  }
+}
+self.addEventListener("push", e => { e.waitUntil(showNotices()); });
 self.addEventListener("notificationclick", e => {
   e.notification.close();
   const url = (e.notification.data && e.notification.data.url) || self.registration.scope;
