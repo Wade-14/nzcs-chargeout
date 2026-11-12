@@ -1020,6 +1020,15 @@ async function submitReport(btn){
     document.querySelectorAll("#generic-body section.card:not(#generic-send)").forEach(sec => sec.remove());
     window.scrollTo(0,0);
   }catch(err){
+    if (err.offline){
+      try{
+        await window.NZCS_HOOKS.queueIncident({report: v, reported_by: (sig && sig.name) || (v.involved || [])[0] || "", summary: [v.event, v.project].filter(Boolean).join(" – ")});
+        drafts[current] = blankValues(FORMS[current]);
+        $("#generic-send").innerHTML = `<h2>Saved in the Outbox</h2><div class="done-box"><b>No signal, so your report is waiting in the Outbox.</b><span>It will go to the managers automatically next time the app is open with signal. You can close this form.</span></div>`;
+        document.querySelectorAll("#generic-body section.card:not(#generic-send)").forEach(sec => sec.remove());
+        window.scrollTo(0,0); return;
+      }catch(e2){}
+    }
     btn.disabled = false;
     status(err.offline ? "No signal. Nothing is lost while the app stays open. Tap Submit again when you have signal." : err.message, true);
   }
