@@ -324,12 +324,12 @@ body.drawer-open .drawer-shade{opacity:1;pointer-events:auto}
   <div class="tiles" id="form-tiles">
     <a class="tile" href="#charge-out-pest" id="tile-co-pest" data-form="co-pest">
       <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3h6v3H9z"/><path d="M8.5 11h7M8.5 15h4.5"/></svg></span>
-      <span class="tt"><b>Charge Out – Pest Control</b><span class="hint">Hours, travel, KM and materials for a pest control job, sent to Sam for invoicing.</span>
+      <span class="tt"><b>Charge Out – Pest Control</b><span class="hint">Hours, travel, KM and materials for a pest control job, sent to Sam (and Wade and Gareth) for invoicing.</span>
         <span class="badges"><span class="badge" id="tile-jobs-pest" hidden></span><span class="badge draft" id="tile-draft-pest" hidden>Form started</span></span></span>
     </a>
     <a class="tile" href="#charge-out-enviro" id="tile-co-enviro" data-form="co-enviro">
       <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3h6v3H9z"/><path d="M8.5 11h7M8.5 15h4.5"/></svg></span>
-      <span class="tt"><b>Charge Out – Environmental Enhancement</b><span class="hint">Hours, travel, KM and materials for an environmental enhancement job, sent to Sam for invoicing.</span>
+      <span class="tt"><b>Charge Out – Environmental Enhancement</b><span class="hint">Hours, travel, KM and materials for an environmental enhancement job, sent to Sam (and Wade and Gareth) for invoicing.</span>
         <span class="badges"><span class="badge" id="tile-jobs-enviro" hidden></span><span class="badge draft" id="tile-draft-enviro" hidden>Form started</span></span></span>
     </a>
   </div>
@@ -485,7 +485,9 @@ body.drawer-open .drawer-shade{opacity:1;pointer-events:auto}
 "use strict";
 /* ---- Who appears in the People dropdown, where forms go, and the storage service ---- */
 const STAFF = ["Gareth Coyle", "Wade McSoriley", "Nigel Spencer", "Dave Spedding", "Dave Walker", "Rob Grant", "Jonathan Poll", "Ruby Young", "Brandon Muller", "Tad Schultz", "Toby Haliday"];
-const SEND_TO = "Admin@nzconservation.nz";
+// Charge Outs go to Sam (enters them into Xero) and, since 12-11-2026, Wade and Gareth too.
+const SEND_LIST = ["Admin@nzconservation.nz", "team@nzconservation.nz", "operations@nzconservation.nz"];
+const SEND_TO = SEND_LIST.join(", "), SEND_WHO = "Sam, Wade and Gareth";
 window.NZCS_STAFF = STAFF;
 const API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? "http://localhost:8787" : "https://nzcs-chargeout-api.royal-dawn-9e17.workers.dev";
 
@@ -796,11 +798,11 @@ function renderSend(){
   if (finished){
     const days = finished.days.length;
     host.innerHTML = `<div class="done-box"><b>${esc(finished.job_name)} is finished${days > 1 ? ` (${days} days)` : ""}.</b>
-      <span class="hint">Now send the PDF to Sam.</span>
+      <span class="hint">Now send the PDF to ${SEND_WHO}.</span>
       <div><span class="hint">To:</span> <span class="addr">${esc(SEND_TO)}</span></div>
-      <div class="btns"><button type="button" class="btn-hivis" id="btn-share">Send PDF to Sam</button><button type="button" id="btn-pdf">Download PDF</button></div>
-      <div class="btns"><a class="btn" id="btn-mail" href="${mailHref(finished)}">Open email to Sam</a><button type="button" id="btn-copy">Copy email text</button></div>
-      <span class="hint" id="share-hint">${mailOn && !mailFailed ? "Emails the PDF straight to Sam from the NZCS Forms address." : SHARE_HINT("Sam's address")}</span>
+      <div class="btns"><button type="button" class="btn-hivis" id="btn-share">Send PDF</button><button type="button" id="btn-pdf">Download PDF</button></div>
+      <div class="btns"><a class="btn" id="btn-mail" href="${mailHref(finished)}">Open email</a><button type="button" id="btn-copy">Copy email text</button></div>
+      <span class="hint" id="share-hint">${mailOn && !mailFailed ? `Emails the PDF straight to ${SEND_WHO} from the NZCS Forms address.` : SHARE_HINT("the addresses")}</span>
       <div class="status" id="send-status" role="status"></div>
       <button type="button" class="btn-small btn-ghost" id="btn-done" style="justify-self:start">Done, start a new form</button></div>`;
     return;
@@ -808,7 +810,7 @@ function renderSend(){
   let label, hint, cls = "btn-primary";
   if (state.mode === "editDay"){ label = "Save changes"; hint = `Updates day ${state.dayNo} of ${esc(state.jobName)}.`; }
   else if (state.complete === "No"){ label = state.mode === "addDay" ? "Save day to job" : "Save to jobs in progress"; hint = "The next crew can open it from Jobs in progress and add their day."; }
-  else if (state.complete === "Yes"){ label = "Finish job"; hint = "Saves the job as complete. Then you'll send the PDF to Sam."; cls = "btn-hivis"; }
+  else if (state.complete === "Yes"){ label = "Finish job"; hint = "Saves the job as complete. Then you'll send the PDF to " + SEND_WHO + "."; cls = "btn-hivis"; }
   else { label = "Save"; hint = "Answer “Is job complete and ready to charge?” first."; }
   host.innerHTML = `<div class="btns"><button type="button" class="${cls}" id="btn-save">${label}</button></div><span class="hint">${hint}</span><div class="status" id="save-status" role="status"></div>`;
 }
@@ -1225,16 +1227,16 @@ async function sharePdf(){
   let file; try{ file = makeFile(finished); }catch(err){ return sendStatus(err.message, true); }
   if (mailOn && !mailFailed){
     const btn = $("#btn-share"); if (btn) btn.disabled = true; sendStatus("Sending…");
-    try{ await emailPdf(file, [SEND_TO], fileTitle(finished), emailText(CO_KINDS[kindOf(finished)].name, finished.job_name, Array.from(new Set(finished.days.flatMap(d => d.people || []))))); sendStatus("Sent to Sam (" + SEND_TO + ")."); if (btn){ btn.disabled = false; btn.textContent = "Send again"; } return; }
-    catch(err){ mailFailed = true; if (btn){ btn.disabled = false; btn.textContent = "Share PDF instead"; } const h = $("#share-hint"); if (h) h.textContent = SHARE_HINT("Sam's address");
+    try{ await emailPdf(file, SEND_LIST, fileTitle(finished), emailText(CO_KINDS[kindOf(finished)].name, finished.job_name, Array.from(new Set(finished.days.flatMap(d => d.people || []))))); sendStatus("Sent to " + SEND_WHO + " (" + SEND_TO + ")."); if (btn){ btn.disabled = false; btn.textContent = "Send again"; } return; }
+    catch(err){ mailFailed = true; if (btn){ btn.disabled = false; btn.textContent = "Share PDF instead"; } const h = $("#share-hint"); if (h) h.textContent = SHARE_HINT("the addresses");
       return sendStatus((err.offline ? "No signal, so the email didn't send." : err.message) + " Tap Share PDF instead to use your phone's share menu.", true); }
   }
   try{ navigator.clipboard && navigator.clipboard.writeText(SEND_TO).catch(() => {}); }catch(e){}
   if (canShareFiles){
     try{ await navigator.share({files:[file], title:fileTitle(finished)}); sendStatus("Shared. Check the email went to " + SEND_TO + "."); }
-    catch(err){ if (err && err.name === "AbortError") sendStatus("Share cancelled.", true); else { downloadFile(file); sendStatus("Sharing didn't work here, so the PDF was downloaded. Use Open email to Sam and attach it.", true); } }
+    catch(err){ if (err && err.name === "AbortError") sendStatus("Share cancelled.", true); else { downloadFile(file); sendStatus("Sharing didn't work here, so the PDF was downloaded. Use Open email and attach it.", true); } }
   } else {
-    downloadFile(file); sendStatus("PDF downloaded. Opening an email to Sam; attach the PDF from your Downloads.");
+    downloadFile(file); sendStatus("PDF downloaded. Opening an email; attach the PDF from your Downloads.");
     setTimeout(() => { location.href = mailHref(finished); }, 600);
   }
 }
@@ -1251,7 +1253,7 @@ function emailBody(job){
   L.push("", "Job complete and ready to charge: Yes", "Signed charge out sheet attached as PDF.");
   return L.join("\n");
 }
-const mailHref = job => `mailto:${SEND_TO}?subject=${encodeURIComponent(fileTitle(job))}&body=${encodeURIComponent("Signed charge out sheet attached as PDF.")}`;
+const mailHref = job => `mailto:${SEND_LIST.join(",")}?subject=${encodeURIComponent(fileTitle(job))}&body=${encodeURIComponent("Signed charge out sheet attached as PDF.")}`;
 function copyEmail(){
   if (!finished) return;
   const txt = "Subject: " + sheetTitle(finished) + "\n\n" + emailBody(finished);

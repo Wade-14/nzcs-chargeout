@@ -42,17 +42,17 @@ All forms work the same way: fill in top to bottom, sign, then tap **Send PDF**.
 - **A half-filled form is kept while the app stays open.** The folder shows **Form started**. If you close the app fully, the form is wiped (Charge Out is the exception, see below).
 - **Clear form and start again** wipes the form once you've sent it.
 
-**Where forms go:** Charge Outs go to Sam. Finished incident reports go to Wade, Gareth and Toby. Every other form goes to Wade and Gareth.
+**Where forms go:** Charge Outs go to Sam, Wade and Gareth. Finished incident reports go to Wade, Gareth and Toby. Every other form goes to Wade and Gareth.
 
 ## Charge Out
 
-There are two Charge Outs in the **Charge Out Forms** folder: **Charge Out – Pest Control** and **Charge Out – Environmental Enhancement**. Pick the one for the type of work. They work the same way, each has its own Jobs in progress, and both go to Sam once the job is finished. One job can run over several days and several phones.
+There are two Charge Outs in the **Charge Out Forms** folder: **Charge Out – Pest Control** and **Charge Out – Environmental Enhancement**. Pick the one for the type of work. They work the same way, each has its own Jobs in progress, and both go to Sam, Wade and Gareth once the job is finished. One job can run over several days and several phones.
 
 1. Fill in the job name, then tap **People on site** and tick everyone who worked. A row for each person appears under **Hours & travel**.
 2. Type each person's **hours worked and travelled** (or track the time, see below), then KMs, materials and comments.
 3. Answer **Job complete?**
     - **No:** tap Save. The job goes into **Jobs in progress**, so anyone can add the next day from their own phone.
-    - **Yes:** the job is finished. Tap **Send PDF to Sam** to send one PDF with every day.
+    - **Yes:** the job is finished. Tap **Send PDF** to send one PDF with every day.
 4. Pick your name under **Filled in by** and sign.
 
 To add a day to an existing job, open **Jobs in progress** and tap the job, then **Add day**. To fix a past day, use its **Edit** button. Only managers can delete a job. A Charge Out you're filling in stays on your phone even if the app is closed.
