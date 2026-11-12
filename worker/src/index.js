@@ -120,7 +120,9 @@ async function vapidJWT(env, aud){
   const sig = await crypto.subtle.sign({name:"ECDSA", hash:"SHA-256"}, key, new TextEncoder().encode(head + "." + body));
   return head + "." + body + "." + b64url(sig);
 }
-async function notifyManagers(env){
+// Record what a ping is about, then ping every manager phone. The service worker fetches recent notices to word it.
+async function notifyManagers(env, type = "incident", count = 0){
+  await env.DB.prepare("INSERT INTO notices (id, type, count, created_at) VALUES (?1, ?2, ?3, ?4)").bind(uid(), type, count, now()).run();
   if (!env.VAPID_PRIVATE_JWK || !env.VAPID_PUBLIC) return;
   const { results } = await env.DB.prepare("SELECT endpoint FROM push_subs").all();
   await Promise.all(results.map(async ({endpoint}) => {
@@ -147,6 +149,16 @@ async function handle(req, env, ctx) {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(req, env) });
   if (path === "" || path === "/") return json(req, env, { ok: true, service: "nzcs-chargeout" });
 
+  // A manager phone's service worker asks what its latest pings were about. It has no share code,
+  // so it proves itself with its own push subscription address instead.
+  if (path === "/api/push/notices" && req.method === "POST") {
+    const body = await readBody(req);
+    const sub = await env.DB.prepare("SELECT endpoint FROM push_subs WHERE endpoint = ?1").bind(str(body.endpoint, 1000)).first();
+    if (!sub) return fail(req, env, 403, "Not subscribed.");
+    const since = new Date(Date.now() - 15 * 60000).toISOString();
+    const { results } = await env.DB.prepare("SELECT id, type, count, created_at FROM notices WHERE created_at >= ?1 ORDER BY created_at DESC LIMIT 5").bind(since).all();
+    return json(req, env, { notices: results });
+  }
   const role = roleFor(req.headers.get("X-Access-Code"), env);
   if (path === "/api/login" && req.method === "POST") {
     let code = req.headers.get("X-Access-Code");
@@ -215,6 +227,11 @@ async function handle(req, env, ctx) {
       await env.DB.prepare("DELETE FROM incidents WHERE id = ?1").bind(id).run();
       return json(req, env, { deleted: id });
     }
+  }
+  // Managers can send the monthly reminder now, to try it out.
+  if (path === "/api/push/test-reminder" && req.method === "POST") {
+    if (role !== "manager") return fail(req, env, 403, "Only managers can do this.");
+    return json(req, env, await monthlyJobsReminder(env, true));
   }
   /* ---------- Alert subscriptions (managers) ---------- */
   if (path === "/api/push/key" && req.method === "GET") return json(req, env, { key: env.VAPID_PUBLIC || "" });
@@ -359,16 +376,40 @@ async function handle(req, env, ctx) {
   return fail(req, env, 404, "Not found.");
 }
 
+/* ---------- Monthly reminder (Wade, 12-11-2026) ----------
+   12:00 pm NZ time on the last Wednesday of each month, if any Charge Out jobs are in progress,
+   ping manager phones: "check Jobs in progress and send what can be invoiced". The cron runs at 23:00 and
+   00:00 UTC (12:00 in NZDT and NZST); only the run that lands on 12:xx in Auckland on that Wednesday sends. */
+const REMINDER_CRON = "0 23,0 * * *";
+function nzNow(d = new Date()){
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-NZ", {timeZone:"Pacific/Auckland", year:"numeric", month:"numeric", day:"numeric", hour:"numeric", hourCycle:"h23", weekday:"short"}).formatToParts(d).map(x => [x.type, x.value]));
+  return { y:+p.year, m:+p.month, d:+p.day, h:+p.hour, wd:p.weekday };
+}
+function isReminderTime(d = new Date()){
+  const t = nzNow(d), daysInMonth = new Date(Date.UTC(t.y, t.m, 0)).getUTCDate();
+  return t.h === 12 && t.wd === "Wed" && t.d + 7 > daysInMonth;   // the last Wednesday: no Wednesday a week later
+}
+async function monthlyJobsReminder(env, force = false){
+  if (!force && !isReminderTime()) return { sent:false, reason:"not the last Wednesday at 12" };
+  const r = await env.DB.prepare("SELECT COUNT(*) AS n FROM jobs WHERE status = 'open'").first();
+  const count = r ? r.n : 0;
+  if (!count) return { sent:false, reason:"no jobs in progress" };
+  await notifyManagers(env, "jobs", count);
+  return { sent:true, count };
+}
+
 export default {
   async fetch(req, env, ctx) {
     try { return await handle(req, env, ctx); }
     catch (err) { return fail(req, env, 400, err && err.message ? err.message : "Something went wrong."); }
   },
   // Daily tidy-up: remove completed jobs older than a year (they're in Sam's email as PDFs).
-  async scheduled(_event, env) {
+  async scheduled(event, env) {
+    if (event && event.cron === REMINDER_CRON) return monthlyJobsReminder(env);
     const cutoff = new Date(Date.now() - KEEP_COMPLETED_DAYS * 86400000).toISOString();
     await env.DB.prepare("DELETE FROM incidents WHERE status = 'complete' AND completed_at < ?1").bind(cutoff).run();
     // Timers nobody saved into a day within a fortnight are forgotten.
+    await env.DB.prepare("DELETE FROM notices WHERE created_at < ?1").bind(new Date(Date.now() - 2 * 86400000).toISOString()).run();
     await env.DB.prepare("DELETE FROM timers WHERE started_at < ?1").bind(new Date(Date.now() - 14 * 86400000).toISOString()).run();
     const { results } = await env.DB.prepare("SELECT id FROM jobs WHERE status = 'complete' AND completed_at < ?1").bind(cutoff).all();
     for (const r of results) {
