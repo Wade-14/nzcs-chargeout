@@ -1304,7 +1304,8 @@ function fileTitle(job){
   const ds = job.days.map(d => d.date).sort();
   const dates = dmy(ds[0]) + (ds.length > 1 && ds[ds.length-1] !== ds[0] ? " to " + dmy(ds[ds.length-1]) : "");
   const inits = Array.from(new Set(job.days.flatMap(d => d.people).map(initialsOf).filter(Boolean))).join(" ");
-  return `${CO_KINDS[kindOf(job)].pdf} - ${job.job_name}${inits ? " - " + inits : ""} ${dates}`;
+  // Date first, then job, then staff initials (Wade, 13-11-2026)
+  return `${CO_KINDS[kindOf(job)].pdf} - ${dates} - ${job.job_name}${inits ? " - " + inits : ""}`;
 }
 const fileName = job => fileTitle(job).replace(/[\\/:*?"<>|]+/g, "-") + ".pdf";
 function makeFile(job){

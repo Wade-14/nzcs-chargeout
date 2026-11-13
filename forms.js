@@ -1413,8 +1413,10 @@ function staffInitials(form, v){
 // "NZCS Spray Diary - Willowbank farm - GC WM 10-11-2026": initials go just before the date.
 function fileTitle(){
   const form = FORMS[current], v = values(), t = form.titleFrom(v), inits = staffInitials(form, v);
-  const cut = t.lastIndexOf(" ");
-  return `${form.pdfTitle} - ` + (inits && cut > 0 ? `${t.slice(0, cut)} - ${inits} ${t.slice(cut + 1)}` : t);
+  // "NZCS Spray Diary - 10-11-2026 - Willowbank farm - GC WM": date first, then job, then staff (Wade, 13-11-2026)
+  const m = t.match(/^(.*?)\s*(\d{2}-\d{2}-\d{4})$/);
+  const job = m ? m[1] : t, date = m ? m[2] : "";
+  return [form.pdfTitle, date, job, inits].filter(Boolean).join(" - ");
 }
 function makeFile(){
   if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("The PDF maker didn't load. Reload the page and try again.");
