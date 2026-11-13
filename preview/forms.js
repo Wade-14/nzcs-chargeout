@@ -1303,7 +1303,7 @@ function buildPDF(){
   const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 18, ink = [21,33,26];
   const base = {theme:"grid", margin:{left:M,right:M}, styles:{font:"helvetica", fontSize:9.5, textColor:ink, lineColor:[214,212,205], lineWidth:0.2, cellPadding:2.2, overflow:"linebreak"}, rowPageBreak:"avoid",
     headStyles:{fillColor:[243,241,236], textColor:[90,90,85], fontStyle:"normal"}, columnStyles:{0:{cellWidth:70, fontStyle:"bold"}}};
-  const title = `${form.pdfTitle} - ${form.titleFrom(v)}`;
+  const title = dateFirst(form, v);
   doc.setFont("times","normal"); doc.setFontSize(22); doc.setTextColor(...ink);
   // Company logo top-left on the first page, title underneath it
   let top = 26;
@@ -1411,12 +1411,15 @@ function staffInitials(form, v){
   return Array.from(new Set(names.map(initialsOf).filter(Boolean))).join(" ");
 }
 // "NZCS Spray Diary - Willowbank farm - GC WM 10-11-2026": initials go just before the date.
+// Date first, then the job (Wade, 13-11-2026): "NZCS Spray Diary - 10-11-2026 - Willowbank farm"
+function dateFirst(form, v){
+  const t = form.titleFrom(v), m = t.match(/^(.*?)\s*(\d{2}-\d{2}-\d{4})$/);
+  return [form.pdfTitle, m ? m[2] : "", m ? m[1] : t].filter(Boolean).join(" - ");
+}
+// File name / email subject: "NZCS Spray Diary - 10-11-2026 - Willowbank farm - GC WM"
 function fileTitle(){
-  const form = FORMS[current], v = values(), t = form.titleFrom(v), inits = staffInitials(form, v);
-  // "NZCS Spray Diary - 10-11-2026 - Willowbank farm - GC WM": date first, then job, then staff (Wade, 13-11-2026)
-  const m = t.match(/^(.*?)\s*(\d{2}-\d{2}-\d{4})$/);
-  const job = m ? m[1] : t, date = m ? m[2] : "";
-  return [form.pdfTitle, date, job, inits].filter(Boolean).join(" - ");
+  const form = FORMS[current], v = values(), inits = staffInitials(form, v);
+  return [dateFirst(form, v), inits].filter(Boolean).join(" - ");
 }
 function makeFile(){
   if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("The PDF maker didn't load. Reload the page and try again.");
@@ -1429,7 +1432,7 @@ function downloadFile(file){
 }
 function emailBody(){
   const form = FORMS[current], v = values();
-  const L = [`${form.pdfTitle} - ${form.titleFrom(v)}`, ""];
+  const L = [dateFirst(form, v), ""];
   form.sections[0].fields.forEach(f => { if (f.id && f.type !== "location" && (!f.showIf || f.showIf(v))) L.push(`${f.label}: ${answerText(f, v)}`); });
   const loc = form.sections[0].fields.find(f => f.type === "location"); if (loc && answerText(loc, v)) L.push("Location: " + answerText(loc, v).replace(/\n/g, " · "));
   L.push("", "Full form attached as PDF.");

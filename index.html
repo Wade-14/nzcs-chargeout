@@ -1226,7 +1226,7 @@ function materialTotals(days){
 }
 function sheetTitle(job){
   const ds = job.days.map(d => d.date).sort();
-  return `${CO_KINDS[kindOf(job)].pdf} - ${job.job_name} ${dmy(ds[0])}${ds.length > 1 && ds[ds.length-1] !== ds[0] ? " to " + dmy(ds[ds.length-1]) : ""}`;
+  return `${CO_KINDS[kindOf(job)].pdf} - ${dmy(ds[0])}${ds.length > 1 && ds[ds.length-1] !== ds[0] ? " to " + dmy(ds[ds.length-1]) : ""} - ${job.job_name}`;   // date first (Wade, 13-11-2026)
 }
 function buildPDF(job){
   const { jsPDF } = window.jspdf;
