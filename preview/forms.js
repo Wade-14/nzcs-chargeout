@@ -1424,7 +1424,9 @@ function fileTitle(){
 function makeFile(){
   if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("The PDF maker didn't load. Reload the page and try again.");
   const {doc} = buildPDF();
-  return new File([doc.output("blob")], fileTitle().replace(/[\\/:*?"<>|]+/g, "-") + ".pdf", {type:"application/pdf"});
+  // The file name leaves off the form name (it's in the email subject): "10-11-2026 - Willowbank farm - GC WM.pdf" (Wade, 13-11-2026)
+  const name = fileTitle().slice(FORMS[current].pdfTitle.length + 3);
+  return new File([doc.output("blob")], name.replace(/[\\/:*?"<>|]+/g, "-") + ".pdf", {type:"application/pdf"});
 }
 function downloadFile(file){
   const url = URL.createObjectURL(file), a = document.createElement("a");
@@ -1445,16 +1447,16 @@ async function share(){
   const to = FORMS[current].sendTo.join(", ");
   if (mailOn()){
     const btn = $("#g-share"); if (btn) btn.disabled = true; status("Sending…");
-    try{ await window.NZCS_HOOKS.emailPdf(file, FORMS[current].sendTo, file.name.replace(/\.pdf$/, ""), window.NZCS_HOOKS.emailText(FORMS[current].title, purposeOf(FORMS[current], values()), staffNames(FORMS[current], values()))); status("Sent to " + FORMS[current].sendToLabel + " (" + to + "). Tap Clear form when you're done."); if (btn){ btn.disabled = false; btn.textContent = "Send again"; } return; }
+    try{ await window.NZCS_HOOKS.emailPdf(file, FORMS[current].sendTo, fileTitle(), window.NZCS_HOOKS.emailText(FORMS[current].title, purposeOf(FORMS[current], values()), staffNames(FORMS[current], values()))); status("Sent to " + FORMS[current].sendToLabel + " (" + to + "). Tap Clear form when you're done."); if (btn){ btn.disabled = false; btn.textContent = "Send again"; } return; }
     catch(err){
-      if (err.offline){ try{ await window.NZCS_HOOKS.queueMail(file, FORMS[current].sendTo, file.name.replace(/\.pdf$/, ""), window.NZCS_HOOKS.emailText(FORMS[current].title, purposeOf(FORMS[current], values()), staffNames(FORMS[current], values())), FORMS[current].sendToLabel);
+      if (err.offline){ try{ await window.NZCS_HOOKS.queueMail(file, FORMS[current].sendTo, fileTitle(), window.NZCS_HOOKS.emailText(FORMS[current].title, purposeOf(FORMS[current], values()), staffNames(FORMS[current], values())), FORMS[current].sendToLabel);
         if (btn){ btn.disabled = true; btn.textContent = "In the Outbox"; } return status("No signal. Saved in the Outbox: it will send by itself next time the app is open with signal. You can clear the form now."); }catch(e2){} }
       window.NZCS_HOOKS.mailFailed(); if (btn){ btn.disabled = false; btn.textContent = "Share PDF instead"; } const h = $("#g-share-hint"); if (h) h.textContent = shareHint();
       return status((err.offline ? "No signal, so the email didn't send." : err.message) + " Tap Share PDF instead to use your phone's share menu.", true); }
   }
   try{ navigator.clipboard && navigator.clipboard.writeText(to).catch(() => {}); }catch(e){}
   if (canShareFiles){
-    try{ await navigator.share({files:[file], title:file.name.replace(/\.pdf$/, "")}); status("Shared. Check it went to " + to + ". Tap Clear form when you're done."); }
+    try{ await navigator.share({files:[file], title:fileTitle()}); status("Shared. Check it went to " + to + ". Tap Clear form when you're done."); }
     catch(err){ if (err && err.name === "AbortError") status("Share cancelled.", true); else { downloadFile(file); status("Sharing didn't work here, so the PDF was downloaded. Use Open email and attach it.", true); } }
   } else {
     downloadFile(file); status("PDF downloaded. Opening an email; attach the PDF from your Downloads.");

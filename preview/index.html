@@ -1307,7 +1307,8 @@ function fileTitle(job){
   // Date first, then job, then staff initials (Wade, 13-11-2026)
   return `${CO_KINDS[kindOf(job)].pdf} - ${dates} - ${job.job_name}${inits ? " - " + inits : ""}`;
 }
-const fileName = job => fileTitle(job).replace(/[\\/:*?"<>|]+/g, "-") + ".pdf";
+// The file name leaves off the form name (it's in the email subject): "05-11-2026 to 09-11-2026 - Willowbank Farm - WM GC.pdf"
+const fileName = job => fileTitle(job).slice(CO_KINDS[kindOf(job)].pdf.length + 3).replace(/[\\/:*?"<>|]+/g, "-") + ".pdf";
 function makeFile(job){
   if (!window.jspdf || !window.jspdf.jsPDF) throw new Error("The PDF maker didn't load. Reload the page and try again.");
   return new File([buildPDF(job).output("blob")], fileName(job), {type:"application/pdf"});
