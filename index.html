@@ -765,7 +765,8 @@ function renderTrack(){
       <span class="hint">Tapped Start or Stop at the wrong time? Change the times and hours worked update.</span>
       <div class="row"><label for="f-break" style="margin:0">Break (mins)</label><input type="number" id="f-break" inputmode="numeric" min="0" step="5" placeholder="0" value="${esc(state.breakMins)}"></div>
       <span>Total time: <b class="big" id="track-total">${fmt(tot)} hrs</b></span>
-      <span class="hint">Rounded to the nearest quarter hour. Each person's hours worked = total time minus their travel. Type travel below and hours worked update.</span>`;
+      <span class="hint">Rounded to the nearest quarter hour. Each person's hours worked = total time minus their travel. Type travel below and hours worked update.</span>
+      <span id="track-cancel-wrap"><button type="button" class="btn-small btn-ghost" id="btn-track-cancel">Delete this tracked day</button></span>`;
   }
   host.innerHTML = `<div class="track-box">${html}${trackMsg ? `<span class="status bad">${esc(trackMsg)}</span>` : ""}<div class="status" id="track-status" role="status"></div></div>`;
 }
@@ -806,6 +807,8 @@ async function changeTrackTime(el){
     trackStatus(err.offline ? "Changing the start time needs signal while the clock is running." : err.message, true);
   }
 }
+// Clearing a form that was being tracked also removes its tracked day, so it doesn't linger in Days being tracked.
+function dropTimer(){ const tid = state.timerId; if (tid) api("DELETE", `/api/timers/${tid}`).then(loadJobs).catch(() => {}); }
 // Load a tracked day from Jobs in progress onto this phone.
 async function openTimer(t){
   finished = null; clearSig(true); trackMsg = "";
@@ -957,7 +960,7 @@ form.addEventListener("click", e => {
   if (id === "btn-save") return saveDay();
   if (id === "btn-track-start") return startTracking();
   if (id === "btn-track-stop") return stopTracking();
-  if (id === "btn-track-cancel"){ $("#track-cancel-wrap").innerHTML = `<span class="confirm">Cancel tracking for this day? <button type="button" class="btn-small btn-danger" id="btn-track-cancel-yes">Cancel tracking</button><button type="button" class="btn-small" id="btn-track-keep">Keep</button></span>`; return; }
+  if (id === "btn-track-cancel"){ $("#track-cancel-wrap").innerHTML = `<span class="confirm">${state.stoppedAt ? "Delete this tracked day? It's removed from Days being tracked." : "Cancel tracking for this day?"} <button type="button" class="btn-small btn-danger" id="btn-track-cancel-yes">${state.stoppedAt ? "Delete" : "Cancel tracking"}</button><button type="button" class="btn-small" id="btn-track-keep">Keep</button></span>`; return; }
   if (id === "btn-track-keep") return renderTrack();
   if (id === "btn-track-cancel-yes"){ const tid = state.timerId; state.timerId = null; state.startedAt = ""; state.stoppedAt = ""; save(); renderTrack(); api("DELETE", `/api/timers/${tid}`).then(loadJobs).catch(() => {}); return; }
   if (id === "btn-share") return sharePdf();
@@ -978,8 +981,8 @@ $("#new-wrap").addEventListener("click", e => {
   const w = $("#new-wrap");
   if (e.target.id === "btn-new"){
     if (isEmpty(state) && state.mode === "new"){ finished = null; store.del(FIN()); resetForm(); return; }
-    w.innerHTML = `<span class="confirm">Clear this form? <button type="button" id="btn-new-yes" class="btn-small btn-primary">Clear</button><button type="button" id="btn-new-no" class="btn-small">Keep</button></span>`;
-  } else if (e.target.id === "btn-new-yes"){ finished = null; store.del(FIN()); resetForm(); w.innerHTML = newBtn; }
+    w.innerHTML = `<span class="confirm">Clear this form?${state.timerId ? " Its tracked time is deleted too." : ""} <button type="button" id="btn-new-yes" class="btn-small btn-primary">Clear</button><button type="button" id="btn-new-no" class="btn-small">Keep</button></span>`;
+  } else if (e.target.id === "btn-new-yes"){ dropTimer(); finished = null; store.del(FIN()); resetForm(); w.innerHTML = newBtn; }
   else if (e.target.id === "btn-new-no"){ w.innerHTML = newBtn; }
 });
 

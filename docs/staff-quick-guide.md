@@ -66,7 +66,7 @@ Typing hours is always fine, and on **Pest Control** it's the usual way. Trackin
 3. Type any **break** in minutes and each person's **travel**. Hours worked fill in by themselves: total time (to the nearest quarter hour) minus break, minus that person's travel.
 4. Finish the form and save as usual.
 
-**Tapped Start or Stop at the wrong time?** Change the **Started** / **Finished** time boxes and hours worked update. **Forgot to start?** Just type the hours. Start and Stop need signal.
+**Tapped Start or Stop at the wrong time?** Change the **Started** / **Finished** time boxes and hours worked update. **Started one by mistake?** Tap **Cancel tracking** (or **Delete this tracked day** after Stop), or **New form → Clear**. **Forgot to start?** Just type the hours. Start and Stop need signal.
 
 ### Materials
 
