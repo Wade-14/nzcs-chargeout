@@ -794,6 +794,7 @@ FORMS.jobAudit = {
       { id:"review", type:"textarea", label:"Review of the work that's been done (go into detail)", required:true },
       { id:"doneWell", type:"textarea", label:"Notes on what was done well" },
       { id:"doneBetter", type:"textarea", label:"Notes on what could be done better" },
+      { id:"photos", type:"photos", label:"Photos of the job site (optional)" },
       { id:"followUp", type:"choice", options:YN, label:"Is a follow up with staff required?" },
       { id:"followUpWhen", type:"date", label:"When will the follow up be completed?", showIf:v => v.followUp === "Yes" },
       { id:"summary", type:"textarea", label:"Final summary, any further comments. Do we need to rework or contact the landowner?" },
