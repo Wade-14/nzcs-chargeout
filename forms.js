@@ -613,8 +613,8 @@ FORMS.access = {
   title: "Landowner Access Agreement for PCA Properties",
   pdfTitle: "NZCS Landowner Access Agreement",
   blurb: "Landowner permission for biosecurity work on a PCA property, with activities discussed and signature.",
-  sendTo: ["team@nzconservation.nz", "operations@nzconservation.nz"],
-  sendToLabel: "Wade and Gareth",
+  sendTo: ["team@nzconservation.nz", "operations@nzconservation.nz", "dave@nzconservation.nz"],
+  sendToLabel: "Wade, Gareth and Dave",
   icon: '<path d="M3 21h18"/><path d="M5 21V10l7-5 7 5v11"/><path d="M9.5 14.5l2 2 3.5-4"/>',
   titleFrom: v => `${v.pca || "PCA"} ${dmy(v.date || "")}`.trim(),
   sections: [
