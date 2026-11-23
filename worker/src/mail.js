@@ -6,6 +6,7 @@ import { connect } from "cloudflare:sockets";
 // The app can only ever send to these addresses, so a share code can't be used to email anyone else.
 export const MAIL_TO_ALLOWED = [
   "team@nzconservation.nz", "operations@nzconservation.nz", "toby@nzconservation.nz", "admin@nzconservation.nz",
+  "dave@nzconservation.nz",   // Landowner Access Agreements (Wade, 23-11-2026)
 ];
 export const MAX_PDF = 18_000_000; // bytes; Gmail's limit is 25 MB including encoding
 
