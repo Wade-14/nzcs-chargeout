@@ -124,6 +124,7 @@ table.hrs tfoot td{font-weight:700;padding-top:10px;border-top:1px solid var(--l
 .done-box b{font-size:16px}
 .done-box .btns{display:flex;flex-wrap:wrap;gap:8px}
 .confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px}
+body:not(.is-manager) .mgr-only{display:none !important}
 .outbox{background:var(--amber-soft);color:var(--amber);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;display:grid;gap:8px;font-weight:600}
 .outbox.ok{background:var(--forest-soft);color:var(--forest)}
 .outbox ul{margin:0;padding-left:18px;font-weight:400;color:var(--ink)}
@@ -621,7 +622,7 @@ document.addEventListener("click", async e => {
 window.addEventListener("online", () => { checkMail().then(flushOutbox); });
 setInterval(() => { if (navigator.onLine && !document.hidden) flushOutbox(); }, 60000);
 const SHARE_HINT = who => canShareFiles ? `Opens your phone's share menu with the PDF attached. Pick Gmail or Outlook, then paste ${who} into the To line (it's copied for you).` : "Download the PDF, then use Open email and attach it from your Downloads.";
-function unlock(){ checkMail().then(flushOutbox); renderOutbox(); document.body.classList.remove("locked"); const mgr = !(auth && auth.role === "manager"); $("#role-pill").hidden = mgr; $("#role-pill-home").hidden = mgr; route(); loadJobs(); loadIncidents(); }
+function unlock(){ checkMail().then(flushOutbox); renderOutbox(); document.body.classList.toggle("is-manager", isManager()); loadSheets(); document.body.classList.remove("locked"); const mgr = !(auth && auth.role === "manager"); $("#role-pill").hidden = mgr; $("#role-pill-home").hidden = mgr; route(); loadJobs(); loadIncidents(); }
 $("#gate-form").addEventListener("submit", async e => {
   e.preventDefault();
   const code = $("#gate-code").value.trim(), err = $("#gate-err"), btn = $("#gate-go");
@@ -1083,7 +1084,7 @@ async function loadJobs(){
       // A tracked day saved or cancelled on another phone: drop it from this phone's form.
       if (state.timerId && !tm.timers.some(t => t.id === state.timerId)){ state.timerId = null; state.startedAt = ""; state.stoppedAt = ""; trackMsg = "This tracked day was saved or cancelled on another phone."; save(); renderTrack(); }
     }
-    allJobs = res.jobs; jobsCache = allJobs.filter(j => kindOf(j) === CO); if (res.role && auth && auth.role !== res.role){ auth.role = res.role; store.set(AUTH_KEY, auth); $("#role-pill").hidden = auth.role !== "manager"; }
+    allJobs = res.jobs; jobsCache = allJobs.filter(j => kindOf(j) === CO); if (res.role && auth && auth.role !== res.role){ auth.role = res.role; store.set(AUTH_KEY, auth); $("#role-pill").hidden = auth.role !== "manager"; document.body.classList.toggle("is-manager", isManager()); }
     $("#jobs-count").textContent = jobsCache.length + timersCache.length;
     Object.keys(CO_KINDS).forEach(k => {
       const n = allJobs.filter(j => kindOf(j) === k).length, nt = allTimers.filter(t => t.kind === k).length, tj = $("#tile-jobs-" + k);
@@ -1207,7 +1208,7 @@ $("#jobs-host").addEventListener("click", async e => {
   }
   if (id === "job-cancel") return renderJob();
 });
-document.addEventListener("visibilitychange", () => { if (!document.hidden && auth){ loadJobs(); loadIncidents(); flushOutbox(); } });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && auth){ loadJobs(); loadIncidents(); loadSheets(); flushOutbox(); } });
 
 /* ---------- PDF ---------- */
 // Add up material quantities that share a unit ("33 L" + "20 L" = "53 L"); otherwise list them.
@@ -1412,7 +1413,7 @@ if (ENGINE){
   Object.entries(ENGINE.forms).forEach(([key, f]) => {
     ONEOFF[f.hash] = key;
     if (f.noTile) return;
-    const a = document.createElement("a"); a.className = "tile"; a.href = f.hash; a.id = "tile-" + key;
+    const a = document.createElement("a"); a.className = "tile" + (f.managerOnly ? " mgr-only" : ""); a.href = f.hash; a.id = "tile-" + key;
     a.innerHTML = `<span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${f.icon}</svg></span>
       <span class="tt"><b>${esc(f.title)}</b><span class="hint">${esc(f.blurb)}</span><span class="badges"><span class="badge draft" id="tile-draft-${key}" hidden>Form started</span></span></span>`;
     a.dataset.form = key;
@@ -1423,6 +1424,8 @@ if (ENGINE){
 const FOLDERS = [
   {id:"chargeout", title:"Charge Out Forms", blurb:"Charge outs for jobs, including jobs in progress.", forms:["co-pest","co-enviro"],
    icon:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3h6v3H9z"/><path d="M8.5 11h7M8.5 15h4.5"/>'},
+  {id:"jobsheets", title:"Job Sheets", blurb:"Plan jobs on site, then send or print the job sheet. Managers only.", forms:["jobSheet"], mgr:true,
+   icon:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3h6v3H9z"/><path d="M8.5 10.5h7M8.5 14h7M8.5 17.5h4"/>'},
   {id:"jobs", title:"Job Records", blurb:"Spray diaries, kill sheets and poison use records.", forms:["spray","kill","poison"],
    icon:'<path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M8 12h8M8 15.5h5"/>'},
   {id:"safety", title:"Health & Safety Forms", blurb:"Toolbox meetings, hazard and incident reports, visitor inductions, training records.", forms:["toolbox","hazard","incident","visitor","training"],
@@ -1438,7 +1441,7 @@ const folderOf = key => (FOLDERS.find(f => f.forms.includes(key)) || {}).id;
 // Any form not given a folder still shows up, in the last folder
 if (ENGINE) Object.keys(ENGINE.forms).forEach(k => { if (!ENGINE.forms[k].noTile && !folderOf(k)) FOLDERS[FOLDERS.length - 1].forms.push(k); });
 FOLDERS.forEach(f => {
-  const a = document.createElement("a"); a.className = "tile folder"; a.href = "#folder-" + f.id; a.id = "folder-" + f.id;
+  const a = document.createElement("a"); a.className = "tile folder" + (f.mgr ? " mgr-only" : ""); a.href = "#folder-" + f.id; a.id = "folder-" + f.id;
   a.innerHTML = `<span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${f.icon}</svg></span>
     <span class="tt"><b>${esc(f.title)}</b><span class="hint">${esc(f.blurb)}</span><span class="count-line">${plural(f.forms.length, "form")}</span>
     <span class="badges"><span class="badge" id="folder-jobs-${f.id}" hidden></span><span class="badge draft" id="folder-draft-${f.id}" hidden>Form started</span></span></span>`;
@@ -1460,6 +1463,7 @@ function updateFolderBadges(){
     $("#folder-draft-" + f.id).hidden = !started;
     const jb = $("#folder-jobs-" + f.id);
     if (f.forms.includes("co-pest")){ const n = allJobs.length; jb.hidden = !n; jb.className = "badge"; jb.textContent = plural(n, "job") + " in progress"; }
+    else if (f.forms.includes("jobSheet")){ const n = sheetsOpen.length; jb.hidden = !n; jb.className = "badge"; jb.textContent = plural(n, "job sheet") + " in progress"; }
     else if (f.forms.includes("incident")){ const n = incidentsOpen.length; jb.hidden = !n; jb.className = "badge urgent"; jb.textContent = plural(n, "incident") + " to investigate"; }
     else jb.hidden = true;
   });
@@ -1493,7 +1497,12 @@ function route(){
   document.body.classList.toggle("view-generic", view === "generic");
   if (view === "generic"){
     if (investigating) openInvestigation(h.slice(13));
-    else { ENGINE.open(ONEOFF[h]); if (h === "#incident-report") renderIncidentInbox(); }
+    else {
+      ENGINE.open(ONEOFF[h]);
+      if (h === "#incident-report") renderIncidentInbox();
+      if (ENGINE.forms[ONEOFF[h]].managerOnly && !isManager()) ENGINE.showMessage(`<section class="card"><p class="status bad">This form is for managers only. Sign in with the manager code to use it.</p></section>`);
+      else if (h === "#job-sheet") renderSheetInbox();
+    }
   } else if (ENGINE) ENGINE.close();
   if (view !== "home") closeDrawer();
   if (view === "home"){
@@ -1533,6 +1542,35 @@ function renderIncidentInbox(noFetch){
     incidentsOpen.map(i => `<a class="inc" href="#investigate-${i.id}"><b>${esc(i.summary || "Incident report")}</b><span class="meta">Reported by ${esc(i.reported_by || "unknown")} · ${esc(dmy((i.created_at || "").slice(0,10)))}</span></a>`).join("") +
     `<span class="hint">Tap one to read it and complete the investigation. To report a new incident, fill in the form below.</span></div>` : "";
 }
+/* ---------- Job sheets in progress (managers only) ---------- */
+let sheetsOpen = [];
+async function loadSheets(){
+  if (!isManager()){ sheetsOpen = []; return; }
+  try{ sheetsOpen = (await api("GET", "/api/jobsheets")).sheets || []; }catch(e){ /* keep last list */ }
+  const tb = $("#tile-jobSheet"); if (tb){ let b = tb.querySelector(".badge.sheets"); if (!b){ b = document.createElement("span"); b.className = "badge sheets"; tb.querySelector(".badges").prepend(b); } b.hidden = !sheetsOpen.length; b.textContent = plural(sheetsOpen.length, "job sheet") + " in progress"; }
+  updateFolderBadges();
+  if (location.hash === "#job-sheet") renderSheetInbox(true);
+}
+function renderSheetInbox(noFetch){
+  const host = $("#generic-extra");
+  if (!isManager()){ host.innerHTML = ""; return; }
+  if (!noFetch) loadSheets();
+  const open = ENGINE.sheetContext && ENGINE.sheetContext();
+  host.innerHTML = sheetsOpen.length ? `<div class="inbox"><h2>Job sheets in progress (${sheetsOpen.length})</h2>` +
+    sheetsOpen.map(sh => `<div class="inc" style="display:flex;justify-content:space-between;gap:10px;align-items:center"><button type="button" class="btn-ghost" data-sheet="${sh.id}" style="text-align:left;flex:1;min-width:0"><b>${esc(sh.client || "Job sheet")}</b><span class="meta" style="display:block">${open && open.sheetId === sh.id ? "Open below · " : ""}Saved ${esc(dmy((sh.updated_at || "").slice(0,10)))}</span></button><span data-sheetdelwrap="${sh.id}"><button type="button" class="btn-small btn-ghost" data-sheetdel="${sh.id}">Delete</button></span></div>`).join("") +
+    `<span class="hint">Tap one to open it and carry on. To start a new job sheet, fill in the form below.</span></div>` : "";
+}
+document.addEventListener("click", async e => {
+  const t = e.target.closest("[data-sheet],[data-sheetdel],[data-sheetdelyes]"); if (!t) return;
+  if (t.dataset.sheet){
+    const st = document.createElement("p"); st.className = "hint"; st.textContent = "Opening…"; t.after(st);
+    try{ const {sheet} = await api("GET", `/api/jobsheets/${t.dataset.sheet}`); ENGINE.openWith("jobSheet", sheet.data, {sheetId: sheet.id}); renderSheetInbox(true); window.scrollTo(0, 0); }
+    catch(err){ st.className = "status bad"; st.textContent = err.message; }
+    return;
+  }
+  if (t.dataset.sheetdel){ t.closest("[data-sheetdelwrap]").innerHTML = `<span class="confirm">Delete? <button type="button" class="btn-small btn-danger" data-sheetdelyes="${t.dataset.sheetdel}">Delete</button></span>`; return; }
+  if (t.dataset.sheetdelyes){ try{ await api("DELETE", `/api/jobsheets/${t.dataset.sheetdelyes}`); }catch(err){} loadSheets(); }
+});
 async function openInvestigation(id){
   if (!isManager()){ ENGINE.showMessage(`<section class="card"><p class="status bad">Only managers can open incident reports.</p></section>`); return; }
   ENGINE.showMessage(`<section class="card"><p class="hint">Loading the report…</p></section>`);
@@ -1551,6 +1589,8 @@ window.NZCS_HOOKS = {
   submitIncident: body => api("POST", "/api/incidents", body),
   saveInvestigation: async (id, investigation, complete) => { const r = await api("PUT", `/api/incidents/${id}`, {investigation, complete}); loadIncidents(); return r; },
   deleteIncident: async id => { await api("DELETE", `/api/incidents/${id}`); loadIncidents(); },
+  saveJobSheet: async (id, client, data) => { const r = id ? await api("PUT", `/api/jobsheets/${id}`, {client, data}) : await api("POST", "/api/jobsheets", {client, data}); loadSheets(); return r.id || id; },
+  deleteJobSheet: async id => { await api("DELETE", `/api/jobsheets/${id}`); loadSheets(); },
 };
 
 /* ---------- incident alerts (Web Push) ---------- */

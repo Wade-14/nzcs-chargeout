@@ -247,6 +247,33 @@ async function handle(req, env, ctx) {
     await env.DB.prepare("DELETE FROM push_subs WHERE endpoint = ?1").bind(str(body.endpoint, 1000)).run();
     return json(req, env, { subscribed: false });
   }
+  /* ---------- Job sheets in progress (managers only) ---------- */
+  if (path.startsWith("/api/jobsheets") && role !== "manager") return fail(req, env, 403, "Only managers can use job sheets.");
+  const sheetData = body => { const d = JSON.stringify(body.data || {}); if (d.length > 200_000) throw new Error("That job sheet is too big to save."); return d; };
+  if (path === "/api/jobsheets" && req.method === "GET") {
+    const { results } = await env.DB.prepare("SELECT id, client, created_at, updated_at FROM jobsheets ORDER BY updated_at DESC LIMIT 200").all();
+    return json(req, env, { sheets: results });
+  }
+  if (path === "/api/jobsheets" && req.method === "POST") {
+    const body = await readBody(req), t = now(), id = uid();
+    await env.DB.prepare("INSERT INTO jobsheets (id, client, data, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?4)").bind(id, str(body.client, 200), sheetData(body), t).run();
+    return json(req, env, { id }, 201);
+  }
+  if ((m = path.match(/^\/api\/jobsheets\/([\w-]{36})$/))) {
+    const id = m[1];
+    if (req.method === "GET") {
+      const r = await env.DB.prepare("SELECT * FROM jobsheets WHERE id = ?1").bind(id).first();
+      if (!r) return fail(req, env, 404, "That job sheet no longer exists. It may have been deleted.");
+      return json(req, env, { sheet: { id: r.id, client: r.client, updated_at: r.updated_at, data: JSON.parse(r.data) } });
+    }
+    if (req.method === "PUT") {
+      const body = await readBody(req);
+      const r = await env.DB.prepare("UPDATE jobsheets SET client = ?2, data = ?3, updated_at = ?4 WHERE id = ?1").bind(id, str(body.client, 200), sheetData(body), now()).run();
+      if (!r.meta || !r.meta.changes) return fail(req, env, 404, "That job sheet no longer exists. It may have been deleted.");
+      return json(req, env, { id });
+    }
+    if (req.method === "DELETE") { await env.DB.prepare("DELETE FROM jobsheets WHERE id = ?1").bind(id).run(); return json(req, env, { deleted: id }); }
+  }
   /* ---------- Time tracking (Environmental Enhancement Charge Out) ---------- */
   // Running and stopped timers that haven't been saved into a day yet. Any crew phone can see and stop them.
   if (path === "/api/timers" && req.method === "GET") {
@@ -408,6 +435,8 @@ export default {
     if (event && event.cron === REMINDER_CRON) return monthlyJobsReminder(env);
     const cutoff = new Date(Date.now() - KEEP_COMPLETED_DAYS * 86400000).toISOString();
     await env.DB.prepare("DELETE FROM incidents WHERE status = 'complete' AND completed_at < ?1").bind(cutoff).run();
+    // Job sheets left untouched for a year are removed.
+    await env.DB.prepare("DELETE FROM jobsheets WHERE updated_at < ?1").bind(cutoff).run();
     // Timers nobody saved into a day within a fortnight are forgotten.
     await env.DB.prepare("DELETE FROM notices WHERE created_at < ?1").bind(new Date(Date.now() - 2 * 86400000).toISOString()).run();
     await env.DB.prepare("DELETE FROM timers WHERE started_at < ?1").bind(new Date(Date.now() - 14 * 86400000).toISOString()).run();
