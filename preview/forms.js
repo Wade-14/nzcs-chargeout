@@ -825,18 +825,18 @@ FORMS.jobSheet = {
   sections: [
     { title: "Client", fields: [
       { id:"client", type:"text", label:"Client name", required:true },
-      { id:"trading", type:"text", label:"Trading name" },
+      { id:"trading", type:"text", label:"Trading name", pair:true },
       { id:"address", type:"location", label:"Address" },
       { id:"phone", type:"text", label:"Phone" },
-      { id:"email", type:"text", label:"Email" },
+      { id:"email", type:"text", label:"Email", pair:true },
       { id:"date", type:"date", label:"Date", today:true },
-      { id:"booking", type:"text", label:"Booking date", placeholder:"Date or month booked" },
+      { id:"booking", type:"text", label:"Booking date", placeholder:"Date or month booked", pair:true },
     ]},
     { title: "Job description", fields: [
       { id:"description", type:"textarea", label:"Job description", placeholder:"What the job involves", required:true },
     ]},
     { title: "Materials required", fields: [
-      { id:"materials", type:"productRows", label:"Materials required", noun:"material", itemLabel:"Material", startRows:3, qtyLabel:"Quantity", qtyPlaceholder:"Amount, or As required",
+      { id:"materials", type:"productRows", label:"Materials required", noun:"material", itemLabel:"Material", startRows:3, qtyLabel:"Quantity", qtyPlaceholder:"Leave blank for As required", emptyQty:"As required",
         options:["Fertiliser","Water","Glyphosate","Penetrant","Dye","Combiguards","Fuel","Premix Fuel","Prefeed","HSB","Feratox","Sentrys","Sentry Pluses","DOC200","Plants","Other"] },
       { id:"materialNotes", type:"textarea", label:"Material details", placeholder:"Who supplies them, where to pick up, etc." },
     ]},
@@ -1375,7 +1375,7 @@ function answerText(f, v){
   if (f.type === "date") return dmy(a);
   if (f.type === "month") return a ? a.split("-").reverse().join("-") : "";
   if (f.type === "tally") return f.rows.map(r => r.name + ": " + r.cols.filter(c => tallyCols(f, v).includes(c)).map(c => `${c.toLowerCase()} ${a[r.name + "|" + c] || 0}`).join(", ")).join("\n");
-  if (f.type === "productRows") return (a || []).filter(r => r.product).map(r => `${r.product === "Other" ? (r.other || "Other") : r.product}: ${r.qty || "quantity not given"}`).join("\n");
+  if (f.type === "productRows") return (a || []).filter(r => r.product).map(r => `${r.product === "Other" ? (r.other || "Other") : r.product}: ${r.qty || f.emptyQty || "quantity not given"}`).join("\n");
   if (f.type === "mixes") return usedMixes(a).map(mixLine).join("\n");
   if (f.type === "location") return [a.address, a.lat != null ? `GPS ${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}` : ""].filter(Boolean).join("\n");
   if (f.type === "derived") return f.compute(v);
@@ -1420,6 +1420,7 @@ function buildPDF(){
         if (f.alertWhen && f.alertWhen(v)) rows.push([{content:f.label, styles:{textColor:RED}}, {content:t, styles:{textColor:RED, fontStyle:"bold", fillColor:[251,228,226]}}]);
         else rows.push([f.label, t]); return; }
       if (isAlert(f, v)) rows.push([{content:f.label, styles:{textColor:RED}}, {content:answerText(f, v) + "  " + (form.alertTag || "(needs attention)"), styles:{textColor:RED, fontStyle:"bold", fillColor:[251,228,226]}}]);
+      else if (f.pair && rows.length && rows[rows.length - 1].length === 2 && rows[rows.length - 1].paired !== false) rows[rows.length - 1].push(f.label, answerText(f, v));
       else rows.push([f.label, answerText(f, v)]);
       if (f.type === "location" && v[f.id].lat != null) links.push(`https://www.google.com/maps?q=${v[f.id].lat},${v[f.id].lng}`);
     });
@@ -1438,8 +1439,13 @@ function buildPDF(){
       head();
       // A table of only notices has one column; otherwise notices span both columns.
       const onlyNotices = rows.every(r => r.length === 1);
-      const body = onlyNotices ? rows.map(r => [Object.assign({}, r[0], {colSpan:1})]) : rows;
-      doc.autoTable(Object.assign({}, base, {startY:y, body, columnStyles: onlyNotices ? {0:{cellWidth:"auto"}} : base.columnStyles,
+      // Paired lines (e.g. Client name | Trading name) make a 4-column table; other rows span the right three columns.
+      const paired = !onlyNotices && rows.some(r => r.length === 4);
+      const body = onlyNotices ? rows.map(r => [Object.assign({}, r[0], {colSpan:1})])
+        : paired ? rows.map(r => r.length === 2 ? [r[0], Object.assign(typeof r[1] === "object" ? r[1] : {content:r[1]}, {colSpan:3})] : r.length === 1 ? [Object.assign({}, r[0], {colSpan:4})] : r)
+        : rows;
+      const cols = onlyNotices ? {0:{cellWidth:"auto"}} : paired ? {0:{cellWidth:32, fontStyle:"bold"}, 1:{cellWidth:55}, 2:{cellWidth:30, fontStyle:"bold"}} : base.columnStyles;
+      doc.autoTable(Object.assign({}, base, {startY:y, body, columnStyles: cols,
         didDrawCell: c => { if (c.section === "body" && c.column.index === 1 && /^GPS /m.test(String(c.cell.raw || "")) && links.length){ doc.link(c.cell.x, c.cell.y, c.cell.width, c.cell.height, {url:links[0]}); } }}));
       y = doc.lastAutoTable.finalY + 10;
     }
