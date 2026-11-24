@@ -804,6 +804,53 @@ FORMS.jobAudit = {
     ]},
   ],
 };
+// Job Sheet (Wade, 24-11-2026): managers plan a job on site; tick who gets it, download it to print,
+// or save it to "Job sheets in progress" and finish later. Lists come from Wade's Word template.
+FORMS.jobSheet = {
+  hash: "#job-sheet",
+  title: "Job Sheet",
+  pdfTitle: "NZCS Job Sheet",
+  managerOnly: true,
+  saveable: true,
+  blurb: "Plan a job on site: client details, job description, materials, equipment and notes. Managers only.",
+  pickTo: [
+    {name:"Wade", email:"team@nzconservation.nz"},
+    {name:"Gareth", email:"operations@nzconservation.nz"},
+    {name:"Dave", email:"dave@nzconservation.nz"},
+  ],
+  sendTo: ["team@nzconservation.nz", "operations@nzconservation.nz", "dave@nzconservation.nz"],
+  sendToLabel: "Wade, Gareth and Dave",
+  icon: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3h6v3H9z"/><path d="M8.5 10.5h7M8.5 14h7M8.5 17.5h4"/>',
+  titleFrom: v => `${(v.client || "").trim() || (v.trading || "").trim() || "Job sheet"} ${dmy(v.date)}`,
+  sections: [
+    { title: "Client", fields: [
+      { id:"client", type:"text", label:"Client name", required:true },
+      { id:"trading", type:"text", label:"Trading name" },
+      { id:"address", type:"location", label:"Address" },
+      { id:"phone", type:"text", label:"Phone" },
+      { id:"email", type:"text", label:"Email" },
+      { id:"date", type:"date", label:"Date", today:true },
+      { id:"booking", type:"text", label:"Booking date", placeholder:"Date or month booked" },
+    ]},
+    { title: "Job description", fields: [
+      { id:"description", type:"textarea", label:"Job description", placeholder:"What the job involves", required:true },
+    ]},
+    { title: "Materials required", fields: [
+      { id:"materials", type:"productRows", label:"Materials required", noun:"material", itemLabel:"Material", startRows:3, qtyLabel:"Quantity", qtyPlaceholder:"Amount, or As required",
+        options:["Fertiliser","Water","Glyphosate","Penetrant","Dye","Combiguards","Fuel","Premix Fuel","Prefeed","HSB","Feratox","Sentrys","Sentry Pluses","DOC200","Plants","Other"] },
+      { id:"materialNotes", type:"textarea", label:"Material details", placeholder:"Who supplies them, where to pick up, etc." },
+    ]},
+    { title: "Equipment required", fields: [
+      { id:"equipment", type:"multi", label:"Equipment required (tick all that apply)",
+        options:["Shovels","Hammers","Plant bags","Knapsack","LUV","Quad bike","Scrub bar","Chainsaw","PPE","Other"] },
+      { id:"equipmentOther", type:"text", label:"Other equipment or equipment notes" },
+    ]},
+    { title: "Notes", fields: [
+      { id:"notes", type:"textarea", label:"Notes about the job site", placeholder:"Contacts, sign-in, stock, access, hazards" },
+    ]},
+  ],
+};
+
 window.NZCS_ONEOFF = FORMS;
 
 /* ---------------- State (memory only) ---------------- */
@@ -817,7 +864,7 @@ const blankValues = form => {
               f.type === "signatures" ? [{name:"", sig:""}] :
               f.type === "mixes" ? [{product:"", ml:"", litres:"", unit:"mL"}] :
               f.type === "tally" ? {} :
-              f.type === "productRows" ? [{product:"", other:"", qty:""}] :
+              f.type === "productRows" ? Array.from({length: f.startRows || 1}, () => ({product:"", other:"", qty:""})) :
               f.type === "checklist" ? [] :
               f.type === "datetime" ? nowLocal() :
               f.type === "location" ? {address:"", lat:null, lng:null} :
@@ -943,9 +990,9 @@ function fieldHTML(form, f, v){
     case "productRows": {
       const list = v[f.id] || [];
       return `<div class="field"><span class="label">${esc(f.label)}${req}</span><div class="mixes">` + list.map((r,i) => `<div class="prow">
-        <div class="field"><label for="${id}-${i}-product">${esc(f.noun === "poison" ? "Poison" : "Product")}</label><select id="${id}-${i}-product" data-gr="${f.id}" data-i="${i}" data-k="product"><option value="">Pick one</option>${f.options.map(o => `<option ${r.product === o ? "selected" : ""}>${esc(o)}</option>`).join("")}</select></div>
-        ${r.product === "Other" ? `<div class="field"><label for="${id}-${i}-other">Which product?</label><input type="text" id="${id}-${i}-other" data-gr="${f.id}" data-i="${i}" data-k="other" autocomplete="off" value="${esc(r.other)}"></div>` : ""}
-        <div class="field"><label for="${id}-${i}-qty">Quantity applied</label><input type="text" id="${id}-${i}-qty" data-gr="${f.id}" data-i="${i}" data-k="qty" autocomplete="off" value="${esc(r.qty)}" placeholder="Amount and units"></div>
+        <div class="field"><label for="${id}-${i}-product">${esc(f.itemLabel || (f.noun === "poison" ? "Poison" : "Product"))}</label><select id="${id}-${i}-product" data-gr="${f.id}" data-i="${i}" data-k="product"><option value="">Pick one</option>${f.options.map(o => `<option ${r.product === o ? "selected" : ""}>${esc(o)}</option>`).join("")}</select></div>
+        ${r.product === "Other" ? `<div class="field"><label for="${id}-${i}-other">${esc(f.itemLabel ? "Which " + f.itemLabel.toLowerCase() + "?" : "Which product?")}</label><input type="text" id="${id}-${i}-other" data-gr="${f.id}" data-i="${i}" data-k="other" autocomplete="off" value="${esc(r.other)}"></div>` : ""}
+        <div class="field"><label for="${id}-${i}-qty">${esc(f.qtyLabel || "Quantity applied")}</label><input type="text" id="${id}-${i}-qty" data-gr="${f.id}" data-i="${i}" data-k="qty" autocomplete="off" value="${esc(r.qty)}" placeholder="${esc(f.qtyPlaceholder || "Amount and units")}"></div>
         ${list.length > 1 ? `<button type="button" class="btn-small btn-ghost prow-del" data-grdel="${f.id}" data-i="${i}">Remove</button>` : ""}
       </div>`).join("") + `</div><button type="button" class="btn-small btn-ghost" data-gradd="${f.id}" style="justify-self:start">+ Add another ${esc(f.noun || "product")}</button>${err}</div>`;
     }
@@ -1050,6 +1097,23 @@ async function saveInvestigation(complete, btn){
     } else status("Saved. You can come back to it from the incident list.");
   }catch(err){ btn.disabled = false; status(err.offline ? "No signal. Try again when you have signal." : err.message, true); }
 }
+// Job sheets: save to the shared "in progress" list (managers only). Map images aren't saved, to keep it small.
+async function saveSheet(btn){
+  const form = FORMS[current], v = values();
+  if (!String(v.client || "").trim()) return status("Type the client name first.", true);
+  const data = JSON.parse(JSON.stringify(v));
+  form.sections.forEach(sec => sec.fields.forEach(f => { if (f.type === "location" && data[f.id]) data[f.id].map = null; }));
+  btn.disabled = true; status("Saving…");
+  try{
+    const id = await window.NZCS_HOOKS.saveJobSheet(invContext && invContext.sheetId, String(v.client).trim(), data);
+    invContext = {sheetId: id}; btn.disabled = false; btn.textContent = "Save changes";
+    status("Saved to Job sheets in progress. Any manager can open it from the Job Sheet page.");
+  }catch(err){ btn.disabled = false; status(err.offline ? "No signal, so it isn't saved yet. Keep the app open and tap Save again when you have signal." : err.message, true); }
+}
+function offerSheetDone(){
+  if (!(FORMS[current].saveable && invContext && invContext.sheetId)) return;
+  const a = $("#g-after"); if (a) a.innerHTML = `<div class="btns"><button type="button" class="btn-small" id="g-sheet-done">Remove it from Job sheets in progress</button></div>`;
+}
 // Names for the email summary: the form's staff field (minus "Other") plus any typed-in names.
 function staffNames(form, v){
   if (!form.staffField) return [];
@@ -1061,7 +1125,25 @@ const purposeOf = (form, v) => String(form.titleFrom(v) || "").replace(/\s*\d{2}
 const mailOn = () => !!(window.NZCS_HOOKS && window.NZCS_HOOKS.mail && window.NZCS_HOOKS.mail().on);
 const shareHint = () => mailOn() ? "Emails the PDF straight to them from the NZCS Forms address."
   : canShareFiles ? "Opens your phone's share menu with the PDF attached. Pick Gmail or Outlook, then paste the addresses into the To line (they're copied for you)." : "Download the PDF, then use Open email and attach it from your Downloads.";
+// Who an email goes to: a form's fixed list, or (Job Sheet) the people ticked in the send area.
+function recips(){
+  const form = FORMS[current], v = values();
+  if (!form.pickTo) return {emails: form.sendTo, label: form.sendToLabel};
+  const picked = form.pickTo.filter((p, i) => (v._to || []).includes(i));
+  return {emails: picked.map(p => p.email), label: picked.map(p => p.name).join(", ").replace(/, ([^,]*)$/, " and $1")};
+}
+function pickToHTML(form){
+  const v = values();
+  return `<div class="field"><span class="label">Send to (tick one or more)</span><div class="chips">` +
+    form.pickTo.map((p, i) => `<button type="button" class="chip multi" data-gto="${i}" aria-pressed="${(v._to || []).includes(i)}">${esc(p.name)}</button>`).join("") +
+    `</div><span class="hint">Emails it from the NZCS Forms address. Download PDF saves it to this phone to print.</span></div>`;
+}
 function sendHTML(form, after){
+  if (form.pickTo) return `<div class="send">${pickToHTML(form)}
+    <div class="btns"><button type="button" class="btn-hivis" id="g-share">Send PDF</button><button type="button" id="g-pdf">Download PDF</button></div>
+    ${form.saveable ? `<div class="btns"><button type="button" id="g-save-sheet">${invContext && invContext.sheetId ? "Save changes" : "Save to Job sheets in progress"}</button></div><span class="hint">Saves it so any manager can open and finish it later.</span>` : ""}
+    <div class="status" id="g-status" role="status"></div><div id="g-after"></div>
+    <div class="btns"><span id="g-clear-wrap"><button type="button" class="btn-small btn-ghost" id="g-clear">Clear form and start again</button></span></div></div>`;
   // "after" = shown under a finished investigation, which already has its own status line and no Clear button
   if (after) return `<div class="send"><div><span class="hint">To ${esc(form.sendToLabel)}:</span> <span class="addr">${form.sendTo.map(esc).join(", ")}</span></div>
     <div class="btns"><button type="button" class="btn-hivis" id="g-share">Send PDF</button><button type="button" id="g-pdf">Download PDF</button><a class="btn" id="g-mail" href="#">Open email</a></div>
@@ -1196,11 +1278,14 @@ function bind(){
     if (t.dataset.mixdel){ v[t.dataset.mixdel].splice(+t.dataset.i, 1); render(); return; }
     if (t.dataset.photodel){ v[t.dataset.photodel].splice(+t.dataset.i, 1); render(); return; }
     if (t.dataset.locate) return locate(t.dataset.locate, t);
+    if (t.dataset.gto !== undefined){ const k = +t.dataset.gto, list = v._to || (v._to = []); v._to = list.includes(k) ? list.filter(x => x !== k) : list.concat(k); t.setAttribute("aria-pressed", String(v._to.includes(k))); return; }
+    if (t.id === "g-save-sheet") return saveSheet(t);
+    if (t.id === "g-sheet-done"){ window.NZCS_HOOKS.deleteJobSheet(invContext.sheetId).then(() => { invContext = null; $("#g-after").innerHTML = ""; status("Removed from Job sheets in progress."); }).catch(err => status(err.message, true)); return; }
     if (t.id === "g-share") return share();
     if (t.id === "g-pdf") return download();
     if (t.id === "g-mail"){ e.preventDefault(); location.href = mailHref(); return; }
     if (t.id === "g-clear"){ $("#g-clear-wrap").innerHTML = `<span class="confirm">Clear everything on this form? <button type="button" class="btn-small btn-primary" id="g-clear-yes">Clear</button><button type="button" class="btn-small" id="g-clear-no">Keep</button></span>`; return; }
-    if (t.id === "g-clear-yes"){ drafts[current] = blankValues(FORMS[current]); rerenderIfShapeChanged.last = null; render(); window.scrollTo(0,0); return; }
+    if (t.id === "g-clear-yes"){ if (FORMS[current].saveable) invContext = null; drafts[current] = blankValues(FORMS[current]); rerenderIfShapeChanged.last = null; render(); window.scrollTo(0,0); return; }
     if (t.id === "g-clear-no"){ $("#g-clear-wrap").innerHTML = `<button type="button" class="btn-small btn-ghost" id="g-clear">Clear form and start again</button>`; }
   });
   document.addEventListener("click", e => { document.querySelectorAll("#generic-body details.dd[open]").forEach(dd => { if (!dd.contains(e.target)) dd.open = false; }); });
@@ -1441,16 +1526,17 @@ function emailBody(){
   L.push("", "Full form attached as PDF.");
   return L.join("\n");
 }
-const mailHref = () => { const form = FORMS[current], v = values(); return `mailto:${form.sendTo.join(",")}?subject=${encodeURIComponent(fileTitle())}&body=${encodeURIComponent("Form attached as PDF.")}`; };
+const mailHref = () => { const form = FORMS[current], v = values(); return `mailto:${recips().emails.join(",")}?subject=${encodeURIComponent(fileTitle())}&body=${encodeURIComponent("Form attached as PDF.")}`; };
 async function share(){
   if (!validate()) return status("Some details are missing. Check the fields marked in red.", true);
   let file; try{ file = makeFile(); }catch(err){ return status(err.message, true); }
-  const to = FORMS[current].sendTo.join(", ");
+  const R = recips(), to = R.emails.join(", ");
+  if (!R.emails.length) return status("Tick who to send it to (above the Send button).", true);
   if (mailOn()){
     const btn = $("#g-share"); if (btn) btn.disabled = true; status("Sending…");
-    try{ await window.NZCS_HOOKS.emailPdf(file, FORMS[current].sendTo, fileTitle(), window.NZCS_HOOKS.emailText(FORMS[current].title, purposeOf(FORMS[current], values()), staffNames(FORMS[current], values()))); status("Sent to " + FORMS[current].sendToLabel + " (" + to + "). Tap Clear form when you're done."); if (btn){ btn.disabled = false; btn.textContent = "Send again"; } return; }
+    try{ await window.NZCS_HOOKS.emailPdf(file, R.emails, fileTitle(), window.NZCS_HOOKS.emailText(FORMS[current].title, purposeOf(FORMS[current], values()), staffNames(FORMS[current], values()))); status("Sent to " + R.label + " (" + to + "). Tap Clear form when you're done."); offerSheetDone(); if (btn){ btn.disabled = false; btn.textContent = "Send again"; } return; }
     catch(err){
-      if (err.offline){ try{ await window.NZCS_HOOKS.queueMail(file, FORMS[current].sendTo, fileTitle(), window.NZCS_HOOKS.emailText(FORMS[current].title, purposeOf(FORMS[current], values()), staffNames(FORMS[current], values())), FORMS[current].sendToLabel);
+      if (err.offline){ try{ await window.NZCS_HOOKS.queueMail(file, R.emails, fileTitle(), window.NZCS_HOOKS.emailText(FORMS[current].title, purposeOf(FORMS[current], values()), staffNames(FORMS[current], values())), R.label);
         if (btn){ btn.disabled = true; btn.textContent = "In the Outbox"; } return status("No signal. Saved in the Outbox: it will send by itself next time the app is open with signal. You can clear the form now."); }catch(e2){} }
       window.NZCS_HOOKS.mailFailed(); if (btn){ btn.disabled = false; btn.textContent = "Share PDF instead"; } const h = $("#g-share-hint"); if (h) h.textContent = shareHint();
       return status((err.offline ? "No signal, so the email didn't send." : err.message) + " Tap Share PDF instead to use your phone's share menu.", true); }
@@ -1474,7 +1560,11 @@ window.NZCS_FORMS_ENGINE = {
   forms: FORMS,
   open(key){ current = key; if (!drafts[key]) drafts[key] = blankValues(FORMS[key]); rerenderIfShapeChanged.last = null; render(); requestAnimationFrame(initSigs); },
   // Open a form filled with answers from elsewhere (an incident being investigated)
-  openWith(key, filled, ctx){ current = key; invContext = ctx || null; drafts[key] = Object.assign(blankValues(FORMS[key]), filled || {}); rerenderIfShapeChanged.last = null; render(); requestAnimationFrame(initSigs); },
+  openWith(key, filled, ctx){ current = key; invContext = ctx || null; drafts[key] = Object.assign(blankValues(FORMS[key]), filled || {}); rerenderIfShapeChanged.last = null; render(); requestAnimationFrame(initSigs);
+    // A saved job sheet keeps the GPS but not the map picture: draw it again.
+    FORMS[key].sections.forEach(sec => sec.fields.forEach(f => { const L = drafts[key][f.id]; if (f.type === "location" && L && L.lat && !L.map) makeMap(L.lat, L.lng).then(img => { if (img && current === key){ L.map = img; render(); } }); }));
+  },
+  sheetContext: () => invContext,
   showMessage(html){ $("#generic-body").innerHTML = html; },
   close(){ current = null; },
   isStarted,
