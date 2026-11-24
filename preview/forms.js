@@ -833,12 +833,12 @@ FORMS.jobSheet = {
       { id:"booking", type:"text", label:"Booking date", placeholder:"Date or month booked", pair:true },
     ]},
     { title: "Job description", fields: [
-      { id:"description", type:"textarea", label:"Job description", placeholder:"What the job involves", required:true },
+      { id:"description", type:"textarea", label:"Job description", placeholder:"What the job involves", required:true, big:true },
     ]},
     { title: "Materials required", fields: [
       { id:"materials", type:"productRows", label:"Materials required", noun:"material", itemLabel:"Material", startRows:3, qtyLabel:"Quantity", qtyPlaceholder:"Leave blank for As required", emptyQty:"As required",
         options:["Fertiliser","Water","Glyphosate","Penetrant","Dye","Combiguards","Fuel","Premix Fuel","Prefeed","HSB","Feratox","Sentrys","Sentry Pluses","DOC200","Plants","Other"] },
-      { id:"materialNotes", type:"textarea", label:"Material details", placeholder:"Who supplies them, where to pick up, etc." },
+      { id:"materialNotes", type:"textarea", label:"Material details", placeholder:"Who supplies them, where to pick up, etc.", big:true },
     ]},
     { title: "Equipment required", fields: [
       { id:"equipment", type:"multi", label:"Equipment required (tick all that apply)",
@@ -846,7 +846,7 @@ FORMS.jobSheet = {
       { id:"equipmentOther", type:"text", label:"Other equipment or equipment notes" },
     ]},
     { title: "Notes", fields: [
-      { id:"notes", type:"textarea", label:"Notes about the job site", placeholder:"Contacts, sign-in, stock, access, hazards" },
+      { id:"notes", type:"textarea", label:"Notes about the job site", placeholder:"Contacts, sign-in, stock, access, hazards", big:true },
     ]},
   ],
 };
@@ -922,7 +922,8 @@ function fieldHTML(form, f, v){
     case "text":
       return `<div class="field"><label for="${id}">${esc(f.label)}${req}</label><input type="text" id="${id}" data-g="${f.id}" autocomplete="off" value="${esc(v[f.id])}" placeholder="${esc(f.placeholder || "")}">${err}</div>`;
     case "textarea":
-      return `<div class="field"><label for="${id}">${esc(f.label)}${req}</label><textarea id="${id}" data-g="${f.id}" placeholder="${esc(f.placeholder || "")}">${esc(v[f.id])}</textarea>${err}</div>`;
+      // big:true = a tall box that grows as you type, so the whole entry stays in view (Job Sheet)
+      return `<div class="field"><label for="${id}">${esc(f.label)}${req}</label><textarea id="${id}" data-g="${f.id}"${f.big ? ' class="big" data-grow="1"' : ""} placeholder="${esc(f.placeholder || "")}">${esc(v[f.id])}</textarea>${err}</div>`;
     case "number":
       return `<div class="field"><label for="${id}">${esc(f.label)}${req}</label><input type="number" inputmode="decimal" min="0" step="any" id="${id}" data-g="${f.id}" value="${esc(v[f.id])}" placeholder="0">${err}</div>`;
     case "person": {
@@ -1024,6 +1025,8 @@ function fieldHTML(form, f, v){
   }
   return "";
 }
+const growBox = t => { t.style.height = "auto"; t.style.height = Math.max(t.scrollHeight + 2, 200) + "px"; };
+document.addEventListener("input", e => { if (e.target.dataset && e.target.dataset.grow) growBox(e.target); });
 function render(){
   const form = FORMS[current], v = values(), host = $("#generic-body");
   $("#generic-title").textContent = form.title;
@@ -1033,6 +1036,7 @@ function render(){
   }).join("") + `<section class="card" id="generic-send"><h2>${form.mode === "submit" ? "Submit" : form.mode === "investigate" ? "Finish" : "Send"}</h2>${form.mode === "submit" ? submitHTML() : form.mode === "investigate" ? investigateHTML() : sendHTML(form)}</section>`;
   rerenderIfShapeChanged.last = shapeOf();
   initSigs();
+  requestAnimationFrame(() => host.querySelectorAll("textarea[data-grow]").forEach(growBox));
 }
 // Read-only view of answers someone else already gave (the employee's part, seen by the investigating manager)
 function lockedHTML(s, v){
