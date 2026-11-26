@@ -1064,10 +1064,11 @@ let invContext = null;   // {id} of the incident being investigated
 async function submitReport(btn){
   if (!validate()) return status("Some details are missing. Check the fields marked in red.", true);
   const v = values(), sig = (v.empSignatures || []).find(x => x.sig);
-  btn.disabled = true; status("Submitting…");
+  btn.disabled = true; status("Submitting…"); SB("sending", "Sending report…", "Please wait. Don't close the app.");
   try{
     await window.NZCS_HOOKS.submitIncident({report: v, reported_by: (sig && sig.name) || (v.involved || [])[0] || "", summary: [v.event, v.project].filter(Boolean).join(" – ")});
     drafts[current] = blankValues(FORMS[current]);
+    SB("sent", "Report sent", "The managers have it and will complete the investigation.");
     $("#generic-send").innerHTML = `<h2>Submitted</h2><div class="done-box"><b>Report submitted.</b><span>The managers have it and will complete the investigation. Managers with alerts turned on have been notified.</span><button type="button" class="btn-small btn-ghost" id="g-new-report" style="justify-self:start">Start a new report</button></div>`;
     document.querySelectorAll("#generic-body section.card:not(#generic-send)").forEach(sec => sec.remove());
     window.scrollTo(0,0);
@@ -1076,12 +1077,13 @@ async function submitReport(btn){
       try{
         await window.NZCS_HOOKS.queueIncident({report: v, reported_by: (sig && sig.name) || (v.involved || [])[0] || "", summary: [v.event, v.project].filter(Boolean).join(" – ")});
         drafts[current] = blankValues(FORMS[current]);
+        SB("outbox", "No signal: saved in the Outbox", "Your report will go to the managers by itself next time the app is open with signal.");
         $("#generic-send").innerHTML = `<h2>Saved in the Outbox</h2><div class="done-box"><b>No signal, so your report is waiting in the Outbox.</b><span>It will go to the managers automatically next time the app is open with signal. You can close this form.</span></div>`;
         document.querySelectorAll("#generic-body section.card:not(#generic-send)").forEach(sec => sec.remove());
         window.scrollTo(0,0); return;
       }catch(e2){}
     }
-    btn.disabled = false;
+    btn.disabled = false; SB("fail", "The report didn't send", err.offline ? "No signal. Keep the app open and tap Submit again when you have signal." : err.message);
     status(err.offline ? "No signal. Nothing is lost while the app stays open. Tap Submit again when you have signal." : err.message, true);
   }
 }
@@ -1126,6 +1128,8 @@ function staffNames(form, v){
   return Array.from(new Set(typed ? list.concat(typed) : list));
 }
 const purposeOf = (form, v) => String(form.titleFrom(v) || "").replace(/\s*\d{2}-\d{2}-\d{4}$/, "").trim();
+const SB = (...a) => { if (window.NZCS_SENDBOX) window.NZCS_SENDBOX.show(...a); };
+const SB_OUTBOX = "It will send by itself next time the app is open with signal. You can carry on.";
 const mailOn = () => !!(window.NZCS_HOOKS && window.NZCS_HOOKS.mail && window.NZCS_HOOKS.mail().on);
 const shareHint = () => mailOn() ? "Emails the PDF straight to them from the NZCS Forms address."
   : canShareFiles ? "Opens your phone's share menu with the PDF attached. Pick Gmail or Outlook, then paste the addresses into the To line (they're copied for you)." : "Download the PDF, then use Open email and attach it from your Downloads.";
@@ -1543,11 +1547,12 @@ async function share(){
   const R = recips(), to = R.emails.join(", ");
   if (!R.emails.length) return status("Tick who to send it to (above the Send button).", true);
   if (mailOn()){
-    const btn = $("#g-share"); if (btn) btn.disabled = true; status("Sending…");
-    try{ await window.NZCS_HOOKS.emailPdf(file, R.emails, fileTitle(), window.NZCS_HOOKS.emailText(FORMS[current].title, purposeOf(FORMS[current], values()), staffNames(FORMS[current], values()))); status("Sent to " + R.label + " (" + to + "). Tap Clear form when you're done."); offerSheetDone(); if (btn){ btn.disabled = false; btn.textContent = "Send again"; } return; }
+    const btn = $("#g-share"); if (btn) btn.disabled = true; status("Sending…"); SB("sending", "Sending form…", "Please wait. Don't close the app.");
+    try{ await window.NZCS_HOOKS.emailPdf(file, R.emails, fileTitle(), window.NZCS_HOOKS.emailText(FORMS[current].title, purposeOf(FORMS[current], values()), staffNames(FORMS[current], values()))); status("Sent to " + R.label + " (" + to + "). Tap Clear form when you're done."); SB("sent", "Form sent", "Emailed to " + R.label + "."); offerSheetDone(); if (btn){ btn.disabled = false; btn.textContent = "Send again"; } return; }
     catch(err){
       if (err.offline){ try{ await window.NZCS_HOOKS.queueMail(file, R.emails, fileTitle(), window.NZCS_HOOKS.emailText(FORMS[current].title, purposeOf(FORMS[current], values()), staffNames(FORMS[current], values())), R.label);
-        if (btn){ btn.disabled = true; btn.textContent = "In the Outbox"; } return status("No signal. Saved in the Outbox: it will send by itself next time the app is open with signal. You can clear the form now."); }catch(e2){} }
+        if (btn){ btn.disabled = true; btn.textContent = "In the Outbox"; } SB("outbox", "No signal: saved in the Outbox", SB_OUTBOX); return status("No signal. Saved in the Outbox: it will send by itself next time the app is open with signal. You can clear the form now."); }catch(e2){} }
+      SB("fail", "The form didn't send", (err.offline ? "No signal." : err.message) + " Tap Share PDF instead.");
       window.NZCS_HOOKS.mailFailed(); if (btn){ btn.disabled = false; btn.textContent = "Share PDF instead"; } const h = $("#g-share-hint"); if (h) h.textContent = shareHint();
       return status((err.offline ? "No signal, so the email didn't send." : err.message) + " Tap Share PDF instead to use your phone's share menu.", true); }
   }

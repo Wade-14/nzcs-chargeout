@@ -101,7 +101,7 @@ The app opens and forms can be filled in with no signal. **Sending, saving and s
 | --- | --- | --- |
 | Opening the app, filling in forms, signing, photos | Works | Works (after you've opened the app once with signal) |
 | Use my location | Address, map and GPS | GPS numbers only; type the address if you need it |
-| **Send PDF** | Emails straight to the office and says **Sent to…** | Saved in the Outbox; sends by itself next time the app is open with signal |
+| **Send PDF** | Emails straight to the office; a pop-up shows a big green tick: **Form sent** | Saved in the Outbox; sends by itself next time the app is open with signal |
 | Charge Out: Save (job not complete) | Saves to Jobs in progress | Your day stays on the phone. Tap Save again in signal |
 | Charge Out: Finish job (job complete) | Saves and you send the PDF | Saved in the Outbox; saved and emailed by itself when there's signal |
 | Incident report: Submit report | Goes to the managers | Saved in the Outbox; goes to the managers when there's signal |
@@ -114,7 +114,7 @@ Charge Out days saved with **Job complete: No** still need signal: your day stay
 ## Rules
 
 - **Keep the share code to NZCS staff.** Don't post it or send it outside the company.
-- **Check you see "Sent to…"** before you clear a form or close the app.
+- **Check you see the green tick "Form sent"** before you clear a form or close the app.
 - **One Charge Out per job.** If the job won't be finished today, save it with Job complete: No so it goes to Jobs in progress, then add the next day to it there. Don't start a new Charge Out each day.
 - **Fill in forms on the day.** Forms must be filled in daily, while the details are fresh.
 
