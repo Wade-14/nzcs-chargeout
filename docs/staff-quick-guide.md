@@ -114,7 +114,7 @@ Charge Out days saved with **Job complete: No** still need signal: your day stay
 ## Rules
 
 - **Keep the share code to NZCS staff.** Don't post it or send it outside the company.
-- **Check you see the green tick "Form sent"**, then tap **Clear form and exit** so the next person starts with a blank form.
+- **Check you see the green tick "Form sent"**, then tap **Clear form and exit** so the next time you open it you start with a blank form.
 - **One Charge Out per job.** If the job won't be finished today, save it with Job complete: No so it goes to Jobs in progress, then add the next day to it there. Don't start a new Charge Out each day.
 - **Fill in forms on the day.** Forms must be filled in daily, while the details are fresh.
 
