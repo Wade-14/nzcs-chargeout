@@ -300,7 +300,7 @@ body.drawer-open .drawer-shade{opacity:1;pointer-events:auto}
 </style>
 </head>
 <body class="locked view-home">
-<div class="sendbox" id="sendbox" hidden role="dialog" aria-modal="true" aria-live="assertive"><div class="sendbox-card"><div class="sendbox-icon" id="sendbox-icon"></div><b class="sendbox-title" id="sendbox-title"></b><span class="sendbox-sub" id="sendbox-sub"></span><button type="button" class="btn-primary" id="sendbox-ok" hidden>OK</button></div></div>
+<div class="sendbox" id="sendbox" hidden role="dialog" aria-modal="true" aria-live="assertive"><div class="sendbox-card"><div class="sendbox-icon" id="sendbox-icon"></div><b class="sendbox-title" id="sendbox-title"></b><span class="sendbox-sub" id="sendbox-sub"></span><button type="button" class="btn-primary" id="sendbox-ok" hidden>OK</button><button type="button" class="btn-small btn-ghost" id="sendbox-keep" hidden>Keep it open</button></div></div>
 
 <div class="gate" id="gate">
   <form class="gate-card" id="gate-form" autocomplete="off">
@@ -559,17 +559,35 @@ async function emailPdf(file, to, subject, text){ return api("POST", "/api/mail"
 
 /* ---------- Sending pop-up (Wade, 26-11-2026): "Sending form, please wait" then a big green tick ---------- */
 const SB_ICON = {sending:"", sent:"✓", outbox:"!", fail:"✕"};
+// After a send, the main button is "Clear form and exit" (Wade, 27-11-2026: staff were closing the app with the
+// sent form still on screen for the next person). `clear` is the function that wipes the form and goes home.
+let sbClear = null;
 window.NZCS_SENDBOX = {
-  show(state, title, sub){
+  show(state, title, sub, clear){
     const box = $("#sendbox"); box.className = "sendbox " + state; box.hidden = false;
     $("#sendbox-icon").textContent = SB_ICON[state] || ""; $("#sendbox-title").textContent = title; $("#sendbox-sub").textContent = sub || "";
-    $("#sendbox-ok").hidden = state === "sending"; if (state !== "sending") $("#sendbox-ok").focus();
+    sbClear = clear || null;
+    const ok = $("#sendbox-ok"); ok.hidden = state === "sending"; ok.textContent = sbClear ? "Clear form and exit" : "OK";
+    $("#sendbox-keep").hidden = !sbClear;
+    if (state !== "sending") ok.focus();
   },
   close(){ $("#sendbox").hidden = true; },
 };
 const SB = (...a) => window.NZCS_SENDBOX.show(...a);
-$("#sendbox-ok").addEventListener("click", () => window.NZCS_SENDBOX.close());
+$("#sendbox-ok").addEventListener("click", () => { window.NZCS_SENDBOX.close(); const f = sbClear; sbClear = null; if (f) f(); });
+$("#sendbox-keep").addEventListener("click", () => { sbClear = null; window.NZCS_SENDBOX.close(); });
 const SB_OUTBOX = "It will send by itself next time the app is open with signal. You can carry on.";
+// A finished Charge Out that has been emailed (or put in the Outbox) is cleared and the app goes back to the folder.
+let finishedSent = false;
+function clearSentCO(){ finished = null; finishedSent = false; store.del(FIN()); resetForm(); goTo("#folder-chargeout"); }
+// Backup: a sent form left on screen while the app sits in the background for 5+ minutes is cleared.
+let hiddenAt = 0;
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden){ hiddenAt = Date.now(); return; }
+  if (!hiddenAt || Date.now() - hiddenAt < 5 * 60000) return;
+  if (finishedSent && finished) clearSentCO();
+  if (ENGINE && ENGINE.clearIfSent) ENGINE.clearIfSent();
+});
 
 /* ---------- Outbox: finished forms sent with no signal wait on the phone and send themselves later ----------
    Only finished forms being emailed go here (not Charge Out days saved to Jobs in progress, not incident submissions).
@@ -1093,7 +1111,7 @@ async function saveDay(){
         const body = state.mode === "new" ? {job_name:state.job.trim(), kind:CO, day:dayPayload(), complete:true, timer_id:state.timerId} : {day:dayPayload(), complete:true, timer_id:state.timerId};
         const path = state.mode === "new" ? "/api/jobs" : `/api/jobs/${state.jobId}/days`;
         await queueSave("cofinish", "POST", path, body, `${CO_KINDS[CO].name}: ${jobName()} (finished)`, SEND_WHO);
-        SB("outbox", "No signal: saved in the Outbox", "The finished job will be saved and sent to " + SEND_WHO + " by itself next time the app is open with signal.");
+        SB("outbox", "No signal: saved in the Outbox", "The finished job will be saved and sent to " + SEND_WHO + " by itself next time the app is open with signal.", () => goTo("#folder-chargeout"));
         resetForm(); const s2 = $("#save-status"); if (s2){ s2.textContent = "No signal. The finished job is saved in the Outbox: next time the app is open with signal it will be saved and the PDF sent to " + SEND_WHO + " automatically."; }
         $("#finish").scrollIntoView({block:"start"}); return;
       }catch(e2){}
@@ -1359,10 +1377,10 @@ async function sharePdf(){
   let file; try{ file = makeFile(finished); }catch(err){ return sendStatus(err.message, true); }
   if (mailOn && !mailFailed){
     const btn = $("#btn-share"); if (btn) btn.disabled = true; sendStatus("Sending…"); SB("sending", "Sending form…", "Please wait. Don't close the app.");
-    try{ await emailPdf(file, SEND_LIST, fileTitle(finished), emailText(CO_KINDS[kindOf(finished)].name, finished.job_name, Array.from(new Set(finished.days.flatMap(d => d.people || []))))); sendStatus("Sent to " + SEND_WHO + " (" + SEND_TO + ")."); SB("sent", "Form sent", "Emailed to " + SEND_WHO + "."); if (btn){ btn.disabled = false; btn.textContent = "Send again"; } return; }
+    try{ await emailPdf(file, SEND_LIST, fileTitle(finished), emailText(CO_KINDS[kindOf(finished)].name, finished.job_name, Array.from(new Set(finished.days.flatMap(d => d.people || []))))); sendStatus("Sent to " + SEND_WHO + " (" + SEND_TO + ")."); finishedSent = true; SB("sent", "Form sent", "Emailed to " + SEND_WHO + ".", clearSentCO); if (btn){ btn.disabled = false; btn.textContent = "Send again"; } return; }
     catch(err){
       if (err.offline){ try{ await queueMail(file, SEND_LIST, fileTitle(finished), emailText(CO_KINDS[kindOf(finished)].name, finished.job_name, Array.from(new Set(finished.days.flatMap(d => d.people || [])))), SEND_WHO);
-        if (btn){ btn.disabled = true; btn.textContent = "In the Outbox"; } SB("outbox", "No signal: saved in the Outbox", SB_OUTBOX); return sendStatus("No signal. Saved in the Outbox: it will send by itself next time the app is open with signal. You can tap Done, start a new form."); }catch(e2){} }
+        if (btn){ btn.disabled = true; btn.textContent = "In the Outbox"; } finishedSent = true; SB("outbox", "No signal: saved in the Outbox", SB_OUTBOX, clearSentCO); return sendStatus("No signal. Saved in the Outbox: it will send by itself next time the app is open with signal. You can tap Done, start a new form."); }catch(e2){} }
       SB("fail", "The form didn't send", (err.offline ? "No signal." : err.message) + " Tap Share PDF instead.");
       mailFailed = true; if (btn){ btn.disabled = false; btn.textContent = "Share PDF instead"; } const h = $("#share-hint"); if (h) h.textContent = SHARE_HINT("the addresses");
       return sendStatus((err.offline ? "No signal, so the email didn't send." : err.message) + " Tap Share PDF instead to use your phone's share menu.", true); }

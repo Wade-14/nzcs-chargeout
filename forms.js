@@ -1130,6 +1130,13 @@ function staffNames(form, v){
 const purposeOf = (form, v) => String(form.titleFrom(v) || "").replace(/\s*\d{2}-\d{2}-\d{4}$/, "").trim();
 const SB = (...a) => { if (window.NZCS_SENDBOX) window.NZCS_SENDBOX.show(...a); };
 const SB_OUTBOX = "It will send by itself next time the app is open with signal. You can carry on.";
+// "Clear form and exit" after a send: wipe this form and go back to its folder (or the incident page for an investigation).
+function clearAndExit(){
+  const key = current, form = FORMS[key];
+  drafts[key] = blankValues(form); if (form.saveable || form.mode === "investigate") invContext = null;
+  rerenderIfShapeChanged.last = null;
+  const back = document.querySelector("#generic-home"); if (back) back.click(); else location.hash = "";
+}
 const mailOn = () => !!(window.NZCS_HOOKS && window.NZCS_HOOKS.mail && window.NZCS_HOOKS.mail().on);
 const shareHint = () => mailOn() ? "Emails the PDF straight to them from the NZCS Forms address."
   : canShareFiles ? "Opens your phone's share menu with the PDF attached. Pick Gmail or Outlook, then paste the addresses into the To line (they're copied for you)." : "Download the PDF, then use Open email and attach it from your Downloads.";
@@ -1548,10 +1555,10 @@ async function share(){
   if (!R.emails.length) return status("Tick who to send it to (above the Send button).", true);
   if (mailOn()){
     const btn = $("#g-share"); if (btn) btn.disabled = true; status("Sending…"); SB("sending", "Sending form…", "Please wait. Don't close the app.");
-    try{ await window.NZCS_HOOKS.emailPdf(file, R.emails, fileTitle(), window.NZCS_HOOKS.emailText(FORMS[current].title, purposeOf(FORMS[current], values()), staffNames(FORMS[current], values()))); status("Sent to " + R.label + " (" + to + "). Tap Clear form when you're done."); SB("sent", "Form sent", "Emailed to " + R.label + "."); offerSheetDone(); if (btn){ btn.disabled = false; btn.textContent = "Send again"; } return; }
+    try{ await window.NZCS_HOOKS.emailPdf(file, R.emails, fileTitle(), window.NZCS_HOOKS.emailText(FORMS[current].title, purposeOf(FORMS[current], values()), staffNames(FORMS[current], values()))); status("Sent to " + R.label + " (" + to + "). Tap Clear form when you're done."); values()._sent = true; SB("sent", "Form sent", "Emailed to " + R.label + ".", clearAndExit); offerSheetDone(); if (btn){ btn.disabled = false; btn.textContent = "Send again"; } return; }
     catch(err){
       if (err.offline){ try{ await window.NZCS_HOOKS.queueMail(file, R.emails, fileTitle(), window.NZCS_HOOKS.emailText(FORMS[current].title, purposeOf(FORMS[current], values()), staffNames(FORMS[current], values())), R.label);
-        if (btn){ btn.disabled = true; btn.textContent = "In the Outbox"; } SB("outbox", "No signal: saved in the Outbox", SB_OUTBOX); return status("No signal. Saved in the Outbox: it will send by itself next time the app is open with signal. You can clear the form now."); }catch(e2){} }
+        if (btn){ btn.disabled = true; btn.textContent = "In the Outbox"; } values()._sent = true; SB("outbox", "No signal: saved in the Outbox", SB_OUTBOX, clearAndExit); return status("No signal. Saved in the Outbox: it will send by itself next time the app is open with signal. You can clear the form now."); }catch(e2){} }
       SB("fail", "The form didn't send", (err.offline ? "No signal." : err.message) + " Tap Share PDF instead.");
       window.NZCS_HOOKS.mailFailed(); if (btn){ btn.disabled = false; btn.textContent = "Share PDF instead"; } const h = $("#g-share-hint"); if (h) h.textContent = shareHint();
       return status((err.offline ? "No signal, so the email didn't send." : err.message) + " Tap Share PDF instead to use your phone's share menu.", true); }
@@ -1573,13 +1580,16 @@ function download(){
 /* ---------------- Hooks used by the home screen ---------------- */
 window.NZCS_FORMS_ENGINE = {
   forms: FORMS,
-  open(key){ current = key; if (!drafts[key]) drafts[key] = blankValues(FORMS[key]); rerenderIfShapeChanged.last = null; render(); requestAnimationFrame(initSigs); },
+  // A form that was already sent starts fresh when opened again, so the next person never sees it.
+  open(key){ current = key; if (!drafts[key] || drafts[key]._sent) drafts[key] = blankValues(FORMS[key]); rerenderIfShapeChanged.last = null; render(); requestAnimationFrame(initSigs); },
   // Open a form filled with answers from elsewhere (an incident being investigated)
   openWith(key, filled, ctx){ current = key; invContext = ctx || null; drafts[key] = Object.assign(blankValues(FORMS[key]), filled || {}); rerenderIfShapeChanged.last = null; render(); requestAnimationFrame(initSigs);
     // A saved job sheet keeps the GPS but not the map picture: draw it again.
     FORMS[key].sections.forEach(sec => sec.fields.forEach(f => { const L = drafts[key][f.id]; if (f.type === "location" && L && L.lat && !L.map) makeMap(L.lat, L.lng).then(img => { if (img && current === key){ L.map = img; render(); } }); }));
   },
   sheetContext: () => invContext,
+  // Called when the app comes back after 5+ minutes in the background: clear an already-sent form left on screen.
+  clearIfSent(){ if (current && drafts[current] && drafts[current]._sent) clearAndExit(); },
   showMessage(html){ $("#generic-body").innerHTML = html; },
   close(){ current = null; },
   isStarted,
